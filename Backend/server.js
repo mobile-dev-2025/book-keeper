@@ -3,7 +3,7 @@ const express = require('express');
 const app = express();
 const port = 8000;
 
-//for Hello world
+//Basic Hello world
 app.get('/', function(req, res){
     res.send('Hello World');
 });
