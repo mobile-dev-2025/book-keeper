@@ -1,0 +1,12 @@
+{
+  "name": "book-keeper",
+  "version": "1.0.0",
+  "description": "Curtis Thomas -\r Glory Ozoji Ifeoma",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
