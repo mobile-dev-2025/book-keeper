@@ -7,7 +7,7 @@ const port = 8000;
 app.get('/', function(req, res){
     res.send('Hello World');
 });
-app.get('/', function(req, res){
+app.get('/backend', function(req, res){
     res.send('Mobile_dev_backend');
 });
 
