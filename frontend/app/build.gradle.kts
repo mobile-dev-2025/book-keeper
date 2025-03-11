@@ -16,6 +16,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Add manifest placeholders for Auth0
+        manifestPlaceholders["auth0Domain"] = "dev-6wa8fjdrx1cprn50.us.auth0.com"
+        manifestPlaceholders["auth0Scheme"] = "demo"
     }
 
     buildTypes {
@@ -69,6 +73,9 @@ dependencies {
 
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Auth0 Authentication
+    implementation("com.auth0.android:auth0:2.9.2")
 
     // Testing dependencies
     testImplementation(libs.junit)
