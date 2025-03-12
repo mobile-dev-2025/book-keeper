@@ -1,44 +1,35 @@
 package com.example.bookkeeper.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.example.bookkeeper.viewmodel.Auth0ViewModel
 import com.example.bookkeeper.viewmodel.AuthState
-import com.example.bookkeeper.viewmodel.LocalAuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
-    authViewModel: LocalAuthViewModel,
+    authViewModel: Auth0ViewModel,
     onNavigateToLogin: () -> Unit,
     onSignUpSuccess: () -> Unit
 ) {
-    // State for email and password inputs
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    // Focus management
-    val focusManager = LocalFocusManager.current
-    val emailFocusRequester = remember { FocusRequester() }
-    val passwordFocusRequester = remember { FocusRequester() }
-
-    // Collect sign up state from the ViewModel
+    // Collect login state from the ViewModel
     val signUpState by authViewModel.signUpState.collectAsState()
 
     // SnackBar for showing error messages
@@ -57,6 +48,11 @@ fun SignUpScreen(
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Sign Up") }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
@@ -68,13 +64,22 @@ fun SignUpScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(top = 60.dp),
+                    .align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // App Logo/Icon
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.LibraryBooks,
+                    contentDescription = "Book Keeper Logo",
+                    modifier = Modifier.size(80.dp),
+                    tint = MaterialTheme.colorScheme.tertiary
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 // Welcome header
                 Text(
-                    text = "Welcome!",
+                    text = "Join Book Keeper",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
@@ -82,75 +87,16 @@ fun SignUpScreen(
 
                 // Welcome message
                 Text(
-                    text = "Sign up to start your journey with books",
+                    text = "Sign up to start your reading journey",
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
 
-                // Email input field
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Your Email address") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(emailFocusRequester),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = "Email icon",
-                            tint = Color.Gray
-                        )
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Password input field
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Enter your password") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(passwordFocusRequester),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Password icon",
-                            tint = Color.Gray
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible)
-                                    Icons.Default.Visibility
-                                else
-                                    Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                                tint = Color.Gray
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Sign Up button
+                // Sign Up with Auth0 button
                 Button(
                     onClick = {
-                        authViewModel.signUp(email, password)
-                        focusManager.clearFocus()
+                        authViewModel.signUp(context)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -167,27 +113,33 @@ fun SignUpScreen(
                             modifier = Modifier.size(24.dp)
                         )
                     } else {
-                        Text("Sign Up")
+                        Text("Create Account with Auth0")
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Login button
-                Button(
+                OutlinedButton(
                     onClick = onNavigateToLogin,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    )
+                        .height(56.dp)
                 ) {
-                    Text("Login")
+                    Text("Already have an account? Login")
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "You'll be redirected to Auth0 for secure registration",
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
             }
 
-            // Terms and privacy policy text at the bottom
+            // Terms and privacy policy text at the bottom with clickable links
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -207,22 +159,38 @@ fun SignUpScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Terms of Use clickable text
                     Text(
                         text = "Terms of Use",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.tertiary,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectTapGestures {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bookkeeperonline.netlify.app"))
+                                context.startActivity(intent)
+                            }
+                        }
                     )
                     Text(
                         text = " and ",
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
                     )
+                    // Privacy Policy clickable text
                     Text(
                         text = "Privacy Policy",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.tertiary,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectTapGestures {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bookkeeperonline.netlify.app"))
+                                context.startActivity(intent)
+                            }
+                        }
                     )
                 }
             }

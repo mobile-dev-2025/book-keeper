@@ -2,8 +2,9 @@ package com.example.bookkeeper.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.automirrored.filled.ExitToApp  // Updated import
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,12 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bookkeeper.viewmodel.LocalAuthViewModel
+import com.example.bookkeeper.viewmodel.Auth0ViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    authViewModel: LocalAuthViewModel,
+    authViewModel: Auth0ViewModel,
     onLogout: () -> Unit
 ) {
     // Get current authenticated user
@@ -35,15 +36,26 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    // Logout button
+                    // Logout button - using AutoMirrored version
                     IconButton(onClick = onLogout) {
                         Icon(
-                            imageVector = Icons.Default.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Logout"
                         )
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { /* Add book functionality will be added later */ },
+                containerColor = MaterialTheme.colorScheme.tertiary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Book"
+                )
+            }
         }
     ) { paddingValues ->
         Column(

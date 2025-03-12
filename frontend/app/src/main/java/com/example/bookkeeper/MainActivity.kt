@@ -19,7 +19,7 @@ import com.example.bookkeeper.screens.LaunchScreen
 import com.example.bookkeeper.screens.LoginScreen
 import com.example.bookkeeper.screens.SignUpScreen
 import com.example.bookkeeper.ui.theme.BookKeeperTheme
-import com.example.bookkeeper.viewmodel.LocalAuthViewModel
+import com.example.bookkeeper.viewmodel.Auth0ViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,10 +40,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BookKeeperApp() {
     val navController = rememberNavController()
-    val authViewModel: LocalAuthViewModel = viewModel()
+    val authViewModel: Auth0ViewModel = viewModel()
+
+    // Initialize Auth0 client
+    LaunchedEffect(Unit) {
+        authViewModel.initialize(navController.context)
+    }
 
     // Check if user is already logged in and navigate accordingly
-    LaunchedEffect(key1 = authViewModel.isLoggedIn()) {
+    LaunchedEffect(Unit) {
         if (authViewModel.isLoggedIn()) {
             navController.navigate("home") {
                 popUpTo("launch") { inclusive = true }
@@ -57,7 +62,7 @@ fun BookKeeperApp() {
 @Composable
 fun BookKeeperNavHost(
     navController: NavHostController,
-    authViewModel: LocalAuthViewModel
+    authViewModel: Auth0ViewModel
 ) {
     NavHost(navController = navController, startDestination = "launch") {
         // Launch/Splash Screen
@@ -101,7 +106,7 @@ fun BookKeeperNavHost(
             HomeScreen(
                 authViewModel = authViewModel,
                 onLogout = {
-                    authViewModel.logout()
+                    authViewModel.logout(navController.context)
                     navController.navigate("launch") {
                         popUpTo("home") { inclusive = true }
                     }
