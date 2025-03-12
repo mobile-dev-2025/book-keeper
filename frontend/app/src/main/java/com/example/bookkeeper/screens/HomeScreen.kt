@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.automirrored.filled.ExitToApp  // Updated import
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +18,8 @@ import com.example.bookkeeper.viewmodel.Auth0ViewModel
 @Composable
 fun HomeScreen(
     authViewModel: Auth0ViewModel,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onMenuClick: () -> Unit  // New parameter for hamburger menu
 ) {
     // Get current authenticated user
     val currentUser = authViewModel.getCurrentUser()
@@ -28,7 +29,8 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Book Keeper") },
                 navigationIcon = {
-                    IconButton(onClick = { /* Open drawer in the future */ }) {
+                    // Hamburger menu icon
+                    IconButton(onClick = onMenuClick) {
                         Icon(
                             imageVector = Icons.Default.Menu,
                             contentDescription = "Menu"
@@ -36,7 +38,7 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    // Logout button - using AutoMirrored version
+                    // Logout button
                     IconButton(onClick = onLogout) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
