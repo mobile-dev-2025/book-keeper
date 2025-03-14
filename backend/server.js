@@ -11,7 +11,13 @@ if (!process.env.MONGODB_URI) {
   throw new Error("MONGODB_URI is not defined");
 }
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  ssl: true, // Make sure SSL is enabled
+  tls: true, // Force TLS connection
+});
+
 const clientPromise = client.connect();
 
 app.use(express.json());
