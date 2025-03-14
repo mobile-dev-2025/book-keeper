@@ -16,6 +16,8 @@ const client = new MongoClient(process.env.MONGODB_URI, {
   useUnifiedTopology: true,
   ssl: true, // Make sure SSL is enabled
   tls: true, // Force TLS connection
+  tlsAllowInvalidCertificates: false, // Valid certificates must be used
+  useUnifiedTopology: true,
 });
 
 const clientPromise = client.connect();
