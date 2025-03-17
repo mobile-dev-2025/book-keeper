@@ -99,8 +99,11 @@ app.post('/addBook', (req, res) => {
             pagesRead: parseInt(pagesRead),
             startDate  : startDate,
             endDate: endDate, 
-            notes: notes, 
-           
+            notes: notes,
+            userId:req.user_id,
+            complete: false,
+            current: true,
+            hidden: false   
         };
 
         books.push(newBook);
@@ -111,7 +114,28 @@ app.post('/addBook', (req, res) => {
     }
 });
 
+//To update a book
+app.put('/currentBook/:id', (req, res) => {
+    try {
+        const bookId = parseInt(req.params.id);
+        const { bookName, pagesRead, startDate, endDate, notes } = req.body;
+        const currentBook = books.find(currentBook => currentBook.id === bookId);
+        
+        if (!currentBook) {
+            return res.status(404).json({ error: 'No book found' });
+        }
+        currentBook.bookName = bookName;
+        currentBook.pagesRead = pagesRead;
+        currentBook.startDate = startDate;
+        currentBook.endDate = endDate;
+        currentBook.notes = notes;
 
+        res.status(200).json(currentBook);
+    } catch (error) {
+        console.error('Error updating book:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 //To view users book history
 app.get('/history', (req, res) => {
