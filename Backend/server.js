@@ -1,4 +1,6 @@
 //For creating server in node.js using express 
+const authRoutes = require('./routes/authRoutes');
+const bookRoutes = require('./routes/bookRoutes');
 const express = require('express');
 const app = express();
 const port = 8000;
@@ -7,8 +9,9 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
 //Routes
-app.use('/auth', require('./routes/authRoutes'));
-app.use('/books', require('./routes/bookRoutes'));
+// Route mounting
+app.use('/auth', authRoutes);
+app.use('/books', bookRoutes);
 
 //Basic Hello world to check if server is running
 app.get('/', (req, res) =>{
