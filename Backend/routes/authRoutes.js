@@ -27,11 +27,29 @@ router.post('/checkUser', auth0Authentication, async (req, res) => {
       user = new User({ email, auth0Id: req.auth0User.sub });
       await user.save();
     }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
-    res.send({ user, token });
+     // Generate your own JWT for API access
+     const token = jwt.sign(
+      { userId: user._id }, 
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.json({
+      token,
+      userId: user._id,
+      email: user.email,
+      isNewUser: !user.createdAt
+    });
+    
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).json({ error: 'User processing failed' });
   }
 });
+    res.send({ user, token });
+ 
+    router.post('/refresh', async (req, res) => {
+      const { refreshToken } = req.body;
+      // Implement refresh token logic
+    });
 
 module.exports = router;
