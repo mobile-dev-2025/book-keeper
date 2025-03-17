@@ -25,12 +25,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.bookkeeper.components.AppDrawer
 import com.example.bookkeeper.components.BottomNavBar
-import com.example.bookkeeper.screens.HomeScreen
-import com.example.bookkeeper.screens.LaunchScreen
-import com.example.bookkeeper.screens.LoginScreen
-import com.example.bookkeeper.screens.SignUpScreen
+import com.example.bookkeeper.screens.*
 import com.example.bookkeeper.ui.theme.BookKeeperTheme
 import com.example.bookkeeper.viewmodel.Auth0ViewModel
+import com.example.bookkeeper.viewmodel.BookViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -54,6 +52,8 @@ class MainActivity : ComponentActivity() {
 fun BookKeeperApp() {
     val navController = rememberNavController()
     val authViewModel: Auth0ViewModel = viewModel()
+    val bookViewModel: BookViewModel = viewModel()
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -77,7 +77,7 @@ fun BookKeeperApp() {
     // Update drawer enabled status based on current route
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    isDrawerEnabled = currentRoute in listOf("home", "add_book", "history", "profile", "settings", "about")
+    isDrawerEnabled = currentRoute in listOf("home", "add_book", "books", "history", "profile", "settings", "about")
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -155,6 +155,7 @@ fun BookKeeperApp() {
                 composable("home") {
                     HomeScreen(
                         authViewModel = authViewModel,
+                        bookViewModel = bookViewModel, // Added bookViewModel parameter
                         onLogout = {
                             authViewModel.logout(navController.context)
                             navController.navigate("launch") {
@@ -169,32 +170,55 @@ fun BookKeeperApp() {
                     )
                 }
 
-                // Placeholder screens for navigation
+                // Books list screen
+                composable("books") {
+                    BooksListScreen(
+                        bookViewModel = bookViewModel,
+                        onMenuClick = {
+                            scope.launch {
+                                drawerState.open()
+                            }
+                        },
+                        onAddBookClick = {
+                            navController.navigate("add_book")
+                        }
+                    )
+                }
+
+                // Add book screen
                 composable("add_book") {
-                    PlaceholderScreen(
-                        screenName = "Add Book Screen",
+                    AddBookScreen(
+                        bookViewModel = bookViewModel,
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()
                             }
+                        },
+                        onNavigateBack = {
+                            navController.popBackStack()
                         }
                     )
                 }
 
+                // History screen
                 composable("history") {
-                    PlaceholderScreen(
-                        screenName = "History Screen",
+                    BooksListScreen(  // Changed from PlaceholderScreen to BooksListScreen
+                        bookViewModel = bookViewModel,
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()
                             }
+                        },
+                        onAddBookClick = {
+                            navController.navigate("add_book")
                         }
                     )
                 }
 
+                // Placeholder screens for other sections
                 composable("profile") {
                     PlaceholderScreen(
-                        screenName = "Profile Screen",
+                        screenName = "Profile",
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()
@@ -205,7 +229,7 @@ fun BookKeeperApp() {
 
                 composable("settings") {
                     PlaceholderScreen(
-                        screenName = "Settings Screen",
+                        screenName = "Settings",
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()
@@ -216,7 +240,7 @@ fun BookKeeperApp() {
 
                 composable("about") {
                     PlaceholderScreen(
-                        screenName = "About Screen",
+                        screenName = "About Book Keeper",
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()
