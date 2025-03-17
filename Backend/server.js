@@ -28,16 +28,32 @@ let books = [
         startDate: '2024-03-02',
         endDate: '2024-03-03',
         notes: 'This is a testing note'
-    },
-    {   
+    }, 
+    {
         id: 3,
         bookName: 'Book3',
         pagesRead: 30,
         startDate: '2024-03-03',
         endDate: '2024-03-04',
-        notes: 'This is another testing note'
-    }
-];
+        notes: 'This is a testing note'
+    },
+   ];
+
+//To check if user exists in database after auth0 authentication
+app.post('/checkUser', async (req, res) => {
+    const { email,password } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        if (!user) {
+          user = new User({ email, password });
+          await user.save();
+        }
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);// to be replaced with auth0 token
+    res.send({ user, token });
+  } catch (error) {
+    res.status(400).send(error);
+  }
+   });
 
 //To view users current book
 app.get('/currentBook', (req, res) => {
@@ -83,7 +99,7 @@ app.post('/addBook', (req, res) => {
             pagesRead: parseInt(pagesRead),
             startDate  : startDate,
             endDate: endDate, 
-            notes: notes 
+            notes: notes, 
            
         };
 
