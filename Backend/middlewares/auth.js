@@ -1,6 +1,6 @@
 // Auth0 Integration Middleware
 // This middleware is used to verify the Auth0 token from the Authorization header
-// If the token is valid, it attaches the Auth0 user data to the request object'
+// If the token is valid, it attaches the Auth0 user data to the request object
 const { verifyAuth0Token } = require('../utils/auth0.utils');
 
 module.exports = async (req, res, next) => {
@@ -11,7 +11,7 @@ module.exports = async (req, res, next) => {
    
    // Attach Auth0 user data to request
    req.auth0User = auth0User;
-   next();
+   next(); // Continue to the next middleware
   } catch (error) {
     res.status(401).json({ error: 'Auth0 Authentication failed' });
   }
