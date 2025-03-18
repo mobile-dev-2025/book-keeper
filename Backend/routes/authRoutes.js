@@ -47,12 +47,5 @@ router.post('/checkUser', authMiddleware, async (req, res) => {
   }
 });
   
-// Refresh token
-router.post('/refresh', authMiddleware, async (req, res) => {
-  const { refreshToken } = req.body;
-      //codes to be completed
-      res.status(501).json({ error: 'Not implemented' });
-    });
-
 module.exports = router;
 
