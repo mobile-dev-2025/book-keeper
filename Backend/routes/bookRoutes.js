@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
+
 //hardcoded books for testing endpoints
 let books = [
     {
@@ -61,22 +62,35 @@ router.get('/currentBook/:id', (req, res) => {
 // to add a new book
 router.post('/addBook', (req, res) => {
     try {
-        const {id, bookName, pagesRead, startDate, endDate, notes } = req.body;
+        const { bookName, pagesRead, startDate, endDate, notes } = req.body;
         console.log(bookName, pagesRead, startDate, endDate, notes );
 
         if (!bookName || !pagesRead || !startDate || !endDate) {
             return res.status(400).json({ error: 'Missing required fields' });    
-        }   
+        } 
+        const currentDate = new Date();
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        
+        // Date validation
+        if (startDateObj >= endDateObj) {
+            return res.status(400).json({ error: 'End date must be after start date' });
+        }
+         // Calculate book status flags
+         const isComplete = endDateObj < currentDate;
+         const isCurrent = !isComplete && 
+                          (currentDate >= startDateObj && currentDate <= endDateObj);
+        
         const newBook = {
             id: books.length + 1,
-            bookName    : bookName,
-            pagesRead: parseInt(pagesRead),
-            startDate  : startDate,
-            endDate: endDate, 
-            notes: notes,
+            bookName    : bookName.trim(),
+            pagesRead: Math.max(0, parseInt(pagesRead)),
+            startDate  : startDateObj,
+            endDate: endDateObj,
+            notes: notes || '',
             userId:req.user_id,
-            complete: false,
-            current: true,
+            complete: isComplete,
+            current: isCurrent,
             hidden: false   
         };
 
