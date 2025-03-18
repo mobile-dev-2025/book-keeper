@@ -2,13 +2,19 @@
 const authRoutes = require('./routes/authRoutes');
 const bookRoutes = require('./routes/bookRoutes');
 const express = require('express');
+const mongoose = require('mongoose');
 const app = express();
 const port = 8000;
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
-//Routes
+//connecting to database
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('DB connection error:', err));
+
+  //Routes
 // Route mounting
 app.use('/auth', authRoutes);
 app.use('/books', bookRoutes);
