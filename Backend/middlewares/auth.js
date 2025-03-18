@@ -6,10 +6,10 @@ const { verifyAuth0Token } = require('../utils/auth0.utils');
 
 module.exports = async (req, res, next) => {
   try {
-    // Validate authorization header format
-    if (!req.headers.authorization?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing authorization token' });
-    }
+   // Validate authorization header format
+   if (!req.headers.authorization?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization token' });
+  } 
    // Verify Auth0 token from Authorization header
    const auth0Token = req.headers.authorization.split(' ')[1];
    const auth0User = await verifyAuth0Token(auth0Token); // Implement Auth0 token verification
@@ -23,5 +23,5 @@ module.exports = async (req, res, next) => {
       error: 'Authentication failed',
       details: error.message 
     });
-  }
-};
+}
+}
