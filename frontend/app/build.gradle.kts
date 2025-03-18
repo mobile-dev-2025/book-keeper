@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("io.coil-kt:coil-compose:2.2.2")
 
     // Compose dependencies
     implementation(platform(libs.androidx.compose.bom))

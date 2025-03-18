@@ -48,10 +48,6 @@ class Auth0ViewModel : ViewModel() {
     fun initialize(context: Context) {
         try {
             auth0 = Auth0(CLIENT_ID, DOMAIN)
-            // The isLoggingEnabled property is not available in recent versions
-            // of the Auth0 SDK, so we'll remove it
-
-            // Log the package name for debugging
             val packageName = context.packageName
             Log.d(TAG, "App package name: $packageName")
             Log.d(TAG, "Auth0 initialized with Client ID: $CLIENT_ID and Domain: $DOMAIN")
@@ -83,12 +79,6 @@ class Auth0ViewModel : ViewModel() {
                     override fun onFailure(error: AuthenticationException) {
                         val errorMsg = error.getDescription() ?: "Unknown error"
                         Log.e(TAG, "Login failed: $errorMsg", error)
-
-                        // Special handling for callback URL errors
-                        if (errorMsg.contains("callback") || errorMsg.contains("redirect")) {
-                            Log.e(TAG, "CALLBACK URL ERROR - Please check Auth0 dashboard settings and make sure the callback URL is registered")
-                        }
-
                         _loginState.value = AuthState.Error(errorMsg)
                     }
                 })
@@ -141,11 +131,15 @@ class Auth0ViewModel : ViewModel() {
             .start(object : Callback<UserProfile, AuthenticationException> {
                 override fun onSuccess(result: UserProfile) {
                     Log.d(TAG, "User profile retrieved successfully")
+
                     userProfile = result
+                    val subId = result.getId() ?: "Unknown Sub ID"
+
+                    Log.d(TAG, "User sub ID: $subId") // Log user sub ID
 
                     // Create user from profile
                     val user = User(
-                        id = result.getId() ?: "",
+                        id = subId,
                         email = result.email ?: "",
                         name = result.name ?: "Book Keeper User"
                     )
@@ -181,7 +175,6 @@ class Auth0ViewModel : ViewModel() {
 
                     override fun onFailure(error: AuthenticationException) {
                         Log.e(TAG, "Logout failed", error)
-                        // Still reset the state even if logout API call fails
                         credentials = null
                         userProfile = null
                         currentUser = null
