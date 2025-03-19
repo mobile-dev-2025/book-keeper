@@ -12,11 +12,28 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
 //connecting to database
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('DB connection error:', err));
+const { MongoClient } = require("mongodb");
 
-  //Routes
+if (!process.env.MONGODB_URI) {
+  throw new Error("MONGODB_URI is not defined");
+}
+
+const client = new MongoClient(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  ssl: true, // Make sure SSL is enabled
+  tls: true, // Force TLS connection
+  tlsAllowInvalidCertificates: false, // Valid certificates must be used
+  useUnifiedTopology: true,
+});
+
+const clientPromise = client.connect();
+clientPromise.then(() => {
+  console.log("Connected to MongoDB");
+}).catch((error) => {
+  console.error("Error connecting to MongoDB:", error);
+});
+
 // Route mounting
 app.use('/auth', authRoutes);
 app.use('/books', bookRoutes);
