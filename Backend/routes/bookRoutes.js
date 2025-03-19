@@ -82,13 +82,16 @@ router.post('/addBook', (req, res) => {
                           (currentDate >= startDateObj && currentDate <= endDateObj);
         
         const newBook = {
+            subId: req.user.subId,
             id: books.length + 1,
-            bookName    : bookName.trim(),
+            bookName : bookName.trim(),
+            TotalPages: Int,
             pagesRead: Math.max(0, parseInt(pagesRead)),
-            startDate  : startDateObj,
+            startDate : startDateObj,
             endDate: endDateObj,
+            ActualEndDate: endDateObj,
+            currentPage: currentPage || 0,
             notes: notes || '',
-            userId:req.user_id,
             complete: isComplete,
             current: isCurrent,
             hidden: false   
@@ -127,14 +130,135 @@ router.put('/currentBook/:id', (req, res) => {
 
 //To view users book history
 router.get('/history', (req, res) => {
-    res.send('Book History list');
+    try {
+        const userBooks = books.filter(b => 
+            b.userId === req.user.subId && b.completed
+        ).map(book => ({
+            id: book.id,
+            bookName: book.bookName,
+            completionDate: book.endDate,
+            totalPages: book.totalPages,
+            readingDuration: `${Math.ceil(
+                (new Date(book.endDate) - new Date(book.startDate)) / 
+                (1000 * 60 * 60 * 24)
+            )} days`
+        }));
+        
+        res.status(200).json(userBooks);
+    } catch (error) {
+        handleError(res, error, 'retrieving history');
+    }
 });
+
+// Get individual book details
+router.get('/history/:id', (req, res) => {
+    try {
+        const book = books.find(b => 
+            b.id === parseInt(req.params.id) && 
+            b.userId === req.user.subId &&
+            b.completed
+        );
+        
+        if (!book) return res.status(404).json({ error: 'Book not found' });
+        
+        res.status(200).json({
+            ...book,
+            readingTimeline: generateReadingTimeline(book),
+            percentageCompleted: Math.round(
+                (book.pagesRead / book.totalPages) * 100
+            )
+        });
+    } catch (error) {
+        handleError(res, error, 'retrieving book details');
+    }
+});
+
 
 //update book history
-router.put('/history/:id', (req, res) => {
-//update hidden markers
-    res.send('Update Book History');
+// Get individual book details
+router.get('/history/:id', (req, res) => {
+    try {
+        const book = books.find(b => 
+            b.id === parseInt(req.params.id) && 
+            b.userId === req.user.subId &&
+            b.completed
+        );
+        
+        if (!book) return res.status(404).json({ error: 'Book not found' });
+        
+        res.status(200).json({
+            ...book,
+            readingTimeline: generateReadingTimeline(book),
+            percentageCompleted: Math.round(
+                (book.pagesRead / book.totalPages) * 100
+            )
+        });
+    } catch (error) {
+        handleError(res, error, 'retrieving book details');
+    }
 });
 
+// Update book with progress tracking
+router.put('/currentBook/:id', (req, res) => {
+    try {
+        const bookId = parseInt(req.params.id);
+        const bookIndex = books.findIndex(b => 
+            b.id === bookId && 
+            b.userId === req.user.subId
+        );
+
+        if (bookIndex === -1) return res.status(404).json({ error: 'Book not found' });
+
+        const updates = req.body;
+        const currentBook = { ...books[bookIndex] };
+
+        if (updates.pagesRead !== undefined) {
+            const newPages = Math.min(
+                Math.max(
+                    parseInt(updates.pagesRead),
+                    currentBook.pagesRead
+                ),
+                currentBook.totalPages
+            );
+            
+            // Calculate daily progress
+            const dateKey = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const dailyDelta = newPages - currentBook.pagesRead;
+            
+            // Update daily history
+            const existingDay = currentBook.dailyReadHistory.find(d => 
+                d.date.startsWith(dateKey)
+            );
+            
+            if (existingDay) {
+                existingDay.pages += dailyDelta;
+            } else {
+                currentBook.dailyReadHistory.push({
+                    date: new Date().toISOString(),
+                    pages: dailyDelta
+                });
+            }
+
+            // Update core metrics
+            currentBook.pagesRead = newPages;
+            currentBook.completed = newPages === currentBook.totalPages;
+            currentBook.lastUpdated = new Date().toISOString();
+        }
+
+        books[bookIndex] = currentBook;
+        
+        res.status(200).json({
+            ...currentBook,
+            progressHistory: undefined,
+            dailyReadHistory: currentBook.dailyReadHistory.map(d => ({
+                date: d.date,
+                pages: d.pages
+            }))
+        });
+        
+    } catch (error) {
+        handleError(res, error, 'updating book');
+    }
+});
 
 module.exports = router;
