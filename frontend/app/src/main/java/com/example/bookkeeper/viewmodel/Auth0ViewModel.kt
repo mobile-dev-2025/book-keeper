@@ -3,6 +3,7 @@ package com.example.bookkeeper.viewmodel
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.auth0.android.Auth0
 import com.auth0.android.authentication.AuthenticationAPIClient
 import com.auth0.android.authentication.AuthenticationException
@@ -12,10 +13,14 @@ import com.auth0.android.result.Credentials
 import com.auth0.android.result.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import retrofit2.Response
+import com.example.bookkeeper.data.ApiService
+import com.example.bookkeeper.data.SubIdRequest
 
 /**
  * ViewModel for handling authentication with Auth0.
+ * Supports both web-based (email/password) and Google authentication.
  */
 class Auth0ViewModel : ViewModel() {
     private val TAG = "Auth0ViewModel"
@@ -29,13 +34,17 @@ class Auth0ViewModel : ViewModel() {
 
     // State flows to observe authentication states
     private val _loginState = MutableStateFlow<AuthState>(AuthState.Idle)
-    val loginState: StateFlow<AuthState> = _loginState.asStateFlow()
+    val loginState: StateFlow<AuthState> = _loginState
 
-    // Same state flow is used for sign up and login since Auth0 handles both
-    val signUpState: StateFlow<AuthState> = loginState
+    // StateFlow for sign-up state
+    private val _signUpState = MutableStateFlow<AuthState>(AuthState.Idle)
+    val signUpState: StateFlow<AuthState> = _signUpState
 
     // Current authenticated user
     private var currentUser: User? = null
+
+    // Track which flow (login or signup) is currently active
+    private var isSignupFlow = false
 
     // Client constants
     private val CLIENT_ID = "jlD62JzB1GY9lgjUeDUOUUMdgaFTJ44z"
@@ -57,10 +66,11 @@ class Auth0ViewModel : ViewModel() {
     }
 
     /**
-     * Login using Auth0 Universal Login (web-based)
+     * Login using Auth0 Universal Login (web-based or Google)
      */
     fun login(context: Context) {
         _loginState.value = AuthState.Loading
+        isSignupFlow = false
 
         try {
             Log.d(TAG, "Login: starting Auth0 login process")
@@ -69,6 +79,7 @@ class Auth0ViewModel : ViewModel() {
                 .withScheme(SCHEME)
                 .withScope("openid profile email")
                 .withAudience("https://$DOMAIN/api/v2/")
+                .withParameters(mapOf("prompt" to "login"))
                 .start(context, object : Callback<Credentials, AuthenticationException> {
                     override fun onSuccess(result: Credentials) {
                         Log.d(TAG, "Login successful")
@@ -89,10 +100,11 @@ class Auth0ViewModel : ViewModel() {
     }
 
     /**
-     * Sign up using Auth0 Universal Login (web-based)
+     * Sign up using Auth0 Universal Login (web-based or Google)
      */
     fun signUp(context: Context) {
-        _loginState.value = AuthState.Loading
+        _signUpState.value = AuthState.Loading
+        isSignupFlow = true
 
         try {
             Log.d(TAG, "SignUp: starting Auth0 signup process")
@@ -112,12 +124,50 @@ class Auth0ViewModel : ViewModel() {
                     override fun onFailure(error: AuthenticationException) {
                         val errorMsg = error.getDescription() ?: "Unknown error"
                         Log.e(TAG, "Signup failed: $errorMsg", error)
-                        _loginState.value = AuthState.Error(errorMsg)
+                        _signUpState.value = AuthState.Error(errorMsg)
                     }
                 })
         } catch (e: Exception) {
             Log.e(TAG, "SignUp: Exception during Auth0 signup", e)
-            _loginState.value = AuthState.Error("Sign up error: ${e.message}")
+            _signUpState.value = AuthState.Error("Sign up error: ${e.message}")
+        }
+    }
+
+    /**
+     * Direct login with Google (skips Universal Login screen)
+     */
+    fun loginWithGoogle(context: Context) {
+        _loginState.value = AuthState.Loading
+        isSignupFlow = false
+
+        try {
+            Log.d(TAG, "Starting Google login process")
+
+            WebAuthProvider.login(auth0)
+                .withScheme(SCHEME)
+                .withScope("openid profile email")
+                .withAudience("https://$DOMAIN/api/v2/")
+                .withConnection("google-oauth2")  // Specify Google OAuth connection
+                .withParameters(mapOf(
+                    "access_type" to "offline",
+                    "prompt" to "select_account"  // Force account selection
+                ))
+                .start(context, object : Callback<Credentials, AuthenticationException> {
+                    override fun onSuccess(result: Credentials) {
+                        Log.d(TAG, "Google login successful")
+                        credentials = result
+                        getUserProfile(result.accessToken)
+                    }
+
+                    override fun onFailure(error: AuthenticationException) {
+                        val errorMsg = error.getDescription() ?: "Unknown error"
+                        Log.e(TAG, "Google login failed: $errorMsg", error)
+                        _loginState.value = AuthState.Error(errorMsg)
+                    }
+                })
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during Google login", e)
+            _loginState.value = AuthState.Error("Google login error: ${e.message}")
         }
     }
 
@@ -145,14 +195,50 @@ class Auth0ViewModel : ViewModel() {
                     )
 
                     currentUser = user
-                    _loginState.value = AuthState.Success(user)
+
+                    // Update the appropriate state based on the flow
+                    if (isSignupFlow) {
+                        _signUpState.value = AuthState.Success(user)
+                    } else {
+                        _loginState.value = AuthState.Success(user)
+                    }
+
+                    // Send the subId to the server
+                    sendSubIdToServer(subId)
                 }
 
                 override fun onFailure(error: AuthenticationException) {
+                    val errorMessage = error.getDescription() ?: "Failed to get user profile"
                     Log.e(TAG, "Failed to get user profile", error)
-                    _loginState.value = AuthState.Error(error.getDescription() ?: "Failed to get user profile")
+
+                    // Update the appropriate error state based on the flow
+                    if (isSignupFlow) {
+                        _signUpState.value = AuthState.Error(errorMessage)
+                    } else {
+                        _loginState.value = AuthState.Error(errorMessage)
+                    }
                 }
             })
+    }
+
+    /**
+     * Send the sub ID to the backend server
+     */
+    private fun sendSubIdToServer(subId: String) {
+        viewModelScope.launch {
+            try {
+                val subIdRequest = SubIdRequest(subId)
+                val response: Response<Void> = ApiService.api.sendSubId(subIdRequest)
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Sub ID sent successfully to the server")
+                } else {
+                    Log.e(TAG, "Error sending Sub ID to the server: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception sending Sub ID: ${e.message}", e)
+            }
+        }
     }
 
     /**
@@ -167,27 +253,29 @@ class Auth0ViewModel : ViewModel() {
                 .start(context, object : Callback<Void?, AuthenticationException> {
                     override fun onSuccess(result: Void?) {
                         Log.d(TAG, "Logout successful")
-                        credentials = null
-                        userProfile = null
-                        currentUser = null
-                        _loginState.value = AuthState.Idle
+                        clearAuthState()
                     }
 
                     override fun onFailure(error: AuthenticationException) {
                         Log.e(TAG, "Logout failed", error)
-                        credentials = null
-                        userProfile = null
-                        currentUser = null
-                        _loginState.value = AuthState.Idle
+                        clearAuthState()
                     }
                 })
         } catch (e: Exception) {
             Log.e(TAG, "Exception during Auth0 logout", e)
-            credentials = null
-            userProfile = null
-            currentUser = null
-            _loginState.value = AuthState.Idle
+            clearAuthState()
         }
+    }
+
+    /**
+     * Clear auth state
+     */
+    private fun clearAuthState() {
+        credentials = null
+        userProfile = null
+        currentUser = null
+        _loginState.value = AuthState.Idle
+        _signUpState.value = AuthState.Idle
     }
 
     /**
@@ -224,5 +312,6 @@ class Auth0ViewModel : ViewModel() {
      */
     fun resetAuthStates() {
         _loginState.value = AuthState.Idle
+        _signUpState.value = AuthState.Idle
     }
 }

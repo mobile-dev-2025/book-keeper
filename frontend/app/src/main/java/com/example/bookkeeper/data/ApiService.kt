@@ -43,6 +43,11 @@ data class AddBookResponse(
     val newBook: Book
 )
 
+// Data class for SubId
+data class SubIdRequest(
+    val subId: String
+)
+
 // Combined API interface
 interface BookKeeperApi {
     // Auth endpoints
@@ -64,12 +69,16 @@ interface BookKeeperApi {
 
     @GET("history")
     suspend fun getBookHistory(): Response<String>
+
+    // Endpoint to send subId to the server
+    @POST("user/subId")
+    suspend fun sendSubId(@Body subIdRequest: SubIdRequest): Response<Void>
 }
 
 // API service singleton
 object ApiService {
-    // Update with your actual backend URL
-    private const val BASE_URL = "https://book-keeper-h3ha.onrender.com/"
+    // Updated BASE_URL to localhost
+    private const val BASE_URL = "http://192.168.0.18:8000/" // Replace with your local server IP
 
     // Create logging interceptor for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

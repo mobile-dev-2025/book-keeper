@@ -28,14 +28,10 @@ fun SignUpScreen(
     onSignUpSuccess: () -> Unit
 ) {
     val context = LocalContext.current
-
-    // Collect login state from the ViewModel
     val signUpState by authViewModel.signUpState.collectAsState()
 
-    // SnackBar for showing error messages
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Check for sign up success or failure
     LaunchedEffect(signUpState) {
         when (signUpState) {
             is AuthState.Success -> onSignUpSuccess()
@@ -48,11 +44,7 @@ fun SignUpScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Sign Up") }
-            )
-        },
+        topBar = { TopAppBar(title = { Text("Sign Up") }) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
@@ -67,7 +59,6 @@ fun SignUpScreen(
                     .align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // App Logo/Icon
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.LibraryBooks,
                     contentDescription = "Book Keeper Logo",
@@ -77,7 +68,6 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Welcome header
                 Text(
                     text = "Join Book Keeper",
                     fontSize = 28.sp,
@@ -85,7 +75,6 @@ fun SignUpScreen(
                     textAlign = TextAlign.Center
                 )
 
-                // Welcome message
                 Text(
                     text = "Sign up to start your reading journey",
                     fontSize = 16.sp,
@@ -93,21 +82,15 @@ fun SignUpScreen(
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
 
-                // Sign Up with Auth0 button
                 Button(
-                    onClick = {
-                        authViewModel.signUp(context)
-                    },
+                    onClick = { authViewModel.signUp(context) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                     enabled = signUpState !is AuthState.Loading
                 ) {
                     if (signUpState is AuthState.Loading) {
-                        // Show loading indicator when signing up
                         CircularProgressIndicator(
                             color = MaterialTheme.colorScheme.onTertiary,
                             modifier = Modifier.size(24.dp)
@@ -119,7 +102,6 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Login button
                 OutlinedButton(
                     onClick = onNavigateToLogin,
                     modifier = Modifier
@@ -137,62 +119,6 @@ fun SignUpScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 32.dp)
                 )
-            }
-
-            // Terms and privacy policy text at the bottom with clickable links
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "By signing up or signing in, you agree to our ",
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Terms of Use clickable text
-                    Text(
-                        text = "Terms of Use",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        textAlign = TextAlign.Center,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectTapGestures {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bookkeeperonline.netlify.app"))
-                                context.startActivity(intent)
-                            }
-                        }
-                    )
-                    Text(
-                        text = " and ",
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center
-                    )
-                    // Privacy Policy clickable text
-                    Text(
-                        text = "Privacy Policy",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        textAlign = TextAlign.Center,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectTapGestures {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bookkeeperonline.netlify.app"))
-                                context.startActivity(intent)
-                            }
-                        }
-                    )
-                }
             }
         }
     }
