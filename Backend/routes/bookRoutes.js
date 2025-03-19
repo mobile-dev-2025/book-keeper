@@ -127,7 +127,13 @@ router.put('/currentBook/:id', (req, res) => {
 
 //To view users book history
 router.get('/history', (req, res) => {
-    res.send('Book History');
+    res.send('Book History list');
+});
+
+//update book history
+router.put('/history/:id', (req, res) => {
+//update hidden markers
+    res.send('Update Book History');
 });
 
 
