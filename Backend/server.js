@@ -6,6 +6,33 @@ const port = 8000;
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
+//connecting to database
+const { MongoClient } = require("mongodb");
+
+if (!process.env.MONGODB_URI) {
+  throw new Error("MONGODB_URI is not defined");
+}
+
+const client = new MongoClient(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  ssl: true, // Make sure SSL is enabled
+  tls: true, // Force TLS connection
+  tlsAllowInvalidCertificates: false, // Valid certificates must be used
+  useUnifiedTopology: true,
+});
+
+const clientPromise = client.connect();
+clientPromise.then(() => {
+  console.log("Connected to MongoDB");
+}).catch((error) => {
+  console.error("Error connecting to MongoDB:", error);
+});
+
+// Route mounting
+app.use('/auth', authRoutes);
+app.use('/books', bookRoutes);
+
 //Basic Hello world to check if server is running
 app.get('/', (req, res) =>{
     res.send('Hello World');
