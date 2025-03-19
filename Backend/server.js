@@ -26,6 +26,51 @@ app.get('/', (req, res) =>{
     res.send('Hello World');
 });
 
+app.get("/TestG", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("checkingbooks");
+      const result = await collection.insertOne({
+        owner: "subId:34345345",
+        bookNo: 1,
+        title: "Book Title",
+        pageAmount: 255,
+        startDate: "25 march",
+        endDate: "25 april",
+        actualEndDate: "calculated",
+        currentPage: 1,
+        pagesPerDay: 20,
+        actualPagesPerDay: 25,
+        dailyReadHistory: "test",
+        bookComplete: false,
+        currentBook: true,
+        hidden: false,
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Error adding test data:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+  
+  //User creation 
+  
+  app.get("/checkUsers", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("checkusers");
+      const result = await collection.insertOne({
+        userId: req.userId,
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Error adding test data:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
 //Listening to port
 app.listen(port, function(err){
     if(err){

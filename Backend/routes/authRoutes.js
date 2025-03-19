@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middlewares/auth');
+
 
 
 // Check user existence and create if needed 
@@ -10,29 +10,14 @@ const authMiddleware = require('../middlewares/auth');
  * 2. Creates new user record if not found
  * 3. Issues application-specific JWT
  */
-router.post('/checkUser', authMiddleware, async (req, res) => {
-  const { email } = req.auth0User; // From Auth0 token
+router.post('/checkUser', async (req, res) => {
+  const { sub } = req.sub; // From Auth0 token
   try {
     // Check existing user
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ sub });
     const isNewUser = !user;
 
-   // Create user if not found
-    if (!user) {
-      user = new User({ email, auth0Id: req.auth0User.sub });// Auth0's unique user identifier
-      await user.save();
-    }
-     // Generate your own JWT for API access
-     const token = jwt.sign(
-      { userId: user._id,
-        auth0Id: user.auth0Id 
-       }, 
-      process.env.JWT_SECRET,
-      { expiresIn: '9h' }
-    );
-
-    res.json({
-      token,
+      res.json({
       userId: user._id,
       email: user.email,
       isNewUser: user.auth0Id ? isNewUser : undefined
