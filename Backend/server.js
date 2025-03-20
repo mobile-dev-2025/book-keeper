@@ -1,6 +1,4 @@
 // For creating server in Node.js using Express
-const authRoutes = require("./routes/authRoutes");
-const bookRoutes = require("./routes/bookRoutes");
 const express = require("express");
 const app = express();
 const port = 8000;
