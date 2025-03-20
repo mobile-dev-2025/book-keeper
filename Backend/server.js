@@ -31,10 +31,6 @@ clientPromise
     console.error("Error connecting to MongoDB:", error);
   });
 
-// Basic Hello World to check if server is running
-app.get("/", (req, res) => {
-  res.send("Hello World");
-});
 
 app.post("/checkUser", async (req, res) => {
   try {
@@ -89,18 +85,18 @@ app.post("/addBook", async (req, res) => {
     const collection = db.collection("books");
 
     // Extract book details from request body
-    const { title, totalPages, userId, pagesRead, startDate, endDate } =
+    const {  bookTitle, totalPages, userId, pagesRead, startDate, endDate, notes } =
       req.body;
 
     // Validate required fields
-    if (!title || !totalPages || !userId) {
+    if (!bookTitle || !totalPages || !userId) {
       return res
         .status(400)
         .json({ error: "title, totalPages, and userId are required" });
     }
 
     // Check for duplicate books for the same user (optional)
-    const existingBook = await collection.findOne({ title, userId });
+    const existingBook = await collection.findOne({ bookTitle, userId });
     if (existingBook) {
       return res
         .status(400)
@@ -109,12 +105,14 @@ app.post("/addBook", async (req, res) => {
 
     // Create new book
     const newBook = {
-      title,
+      bookTitle,
       totalPages,
       userId,
       pagesRead: pagesRead || 0,
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : null,
+      notes: notes || ""
+    
     };
 
     await collection.insertOne(newBook);
