@@ -26,12 +26,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //adds test data to the database
-app.get("/Test1", async (req, res) => {
+app.get("/checkUsers", async (req, res) => {
   try {
     const clientConnection = await clientPromise;
     const db = clientConnection.db("book-keeper");
-    const collection = db.collection("test");
-    const result = await collection.insertOne({ test: "test" });
+    const collection = db.collection("users");
+    const result = await collection.insertOne({
+      userId: req.userId,
+    });
     res.json(result);
   } catch (error) {
     console.error("Error adding test data:", error);
@@ -44,7 +46,7 @@ app.get("/Test2", async (req, res) => {
   try {
     const clientConnection = await clientPromise;
     const db = clientConnection.db("book-keeper");
-    const collection = db.collection("test");
+    const collection = db.collection("users");
     const result = await collection.find().toArray();
     res.json(result);
   } catch (error) {
