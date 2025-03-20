@@ -43,52 +43,103 @@ app.get('/', (req, res) =>{
 });
 
 
-
-app.get("/Books", async (req, res) => {
+//adds book data to the db
+app.post("/Books", async (req, res) => {
     try {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
       const collection = db.collection("Books");
       const result = await collection.insertOne({
-        subId,
-        bookNo: 1,
-        bookTitle: req.body.bookTitle,
-        totalPages: req.body.totalPages,
-        startDate: new Date(req.body.startDate),
-        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
-        actualEndDate: req.body.endDate ? new Date(req.body.endDate) : null,
-        currentPage: req.body.currentPage || 1,
-        pagesPerDay: req.body.pagesPerDay || 0,
-        dailyReadHistory: [],
-        bookComplete: false,
-        currentBook: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        hidden: false
+          //subId: req.user.subId,
+          bookName: req.body.bookName.trim(),
+          totalPages: req.body.totalPages,
+          currentPage: Math.max(0, 
+              parseInt(req.body.currentPage || 0)
+          ),
+          pagesRead: req.body.pagesRead,
+          actualEndDate: null, // To be updated when book is completed
+          startDate: startDateObj,
+          endDate: endDateObj,
+          dailyReadHistory: [],            
+          complete: isComplete,
+          current: isCurrent,
+          notes: req.body.notes?.trim() || '',
+          progressHistory: [],
+          hidden: false,
+          meta: {
+              createdAt: new Date(),
+              updatedAt: new Date()
+          }
       });
+
       res.json(result);
     } catch (error) {
       console.error("Failed to create book record:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
+
+ //gets book data from the db
+ app.get("/Books/:subId", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("Books");
+      const result = await collection.find({ subId: req.params.subId }).toArray();
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching books:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
   
-  //User creation 
-  
-  app.get("/checkUser", async (req, res) => {
+  //adds user data to the db
+  app.post("/user", async (req, res) => {
     try {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
       const collection = db.collection("Checkuser");
       const result = await collection.insertOne({
-        subId,
+        subId: req.body.subId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to create user record:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+   //gets user data from the db
+   app.get("/user/:subId", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("Checkuser");
+      const result = await collection.findOne({ subId: req.params.subId });
       res.json(result);
     } catch (error) {
       console.error("Error checking user:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
+  
+  //checks if user exists in the db
+  app.get("/checkUser/:subId", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("Checkuser");
+      const result = await collection.findOne({ subId: req.params.subId });
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking user:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
 
 //Listening to port
 app.listen(port, function(err){

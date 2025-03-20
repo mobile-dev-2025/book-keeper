@@ -76,25 +76,39 @@ router.post('/addBook', (req, res) => {
         if (startDateObj >= endDateObj) {
             return res.status(400).json({ error: 'End date must be after start date' });
         }
-         // Calculate book status flags
+        // Numeric Validation
+        const totalPages = parseInt(req.body.totalPages);
+        if (isNaN(totalPages) || totalPages <= 0) {
+            return res.status(400).json({
+                error: 'Total pages must be positive integer'
+            });
+        }
+         // Calculate book status based on dates
          const isComplete = endDateObj < currentDate;
          const isCurrent = !isComplete && 
                           (currentDate >= startDateObj && currentDate <= endDateObj);
         
         const newBook = {
             subId: req.user.subId,
-            id: books.length + 1,
-            bookName : bookName.trim(),
-            TotalPages: Int,
+            bookName: req.body.bookName.trim(),
+            totalPages: totalPages,
+            currentPage: Math.max(0, 
+                parseInt(req.body.currentPage || 0)
+            ),
             pagesRead: Math.max(0, parseInt(pagesRead)),
-            startDate : startDateObj,
+            actualEndDate: null, // To be updated when book is completed
+            startDate: startDateObj,
             endDate: endDateObj,
-            ActualEndDate: endDateObj,
-            currentPage: currentPage || 0,
-            notes: notes || '',
+            dailyReadHistory: [],            
             complete: isComplete,
             current: isCurrent,
-            hidden: false   
+            notes: req.body.notes?.trim() || '',
+            progressHistory: [],
+            hidden: false,
+            meta: {
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }
         };
 
         books.push(newBook);
