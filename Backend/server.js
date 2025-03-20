@@ -127,6 +127,7 @@ app.post("/addBook", async (req, res) => {
   }
 });
 
+// Fetching history of books read by the user from database
 app.get("/history", async (req, res) => {
   try {
     const clientConnection = await clientPromise;
