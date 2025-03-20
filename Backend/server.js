@@ -129,6 +129,33 @@ app.post("/addBook", async (req, res) => {
   }
 });
 
+app.get("/history", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
+
+    // Extract userId from query parameters
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Fetch all books read by the user
+    const books = await collection.find({ userId }).toArray();
+
+    res.json({
+      message: "User reading history retrieved successfully",
+      books,
+    });
+  } catch (error) {
+    console.error("Error fetching user history:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
 // Listening to port
 app.listen(port, (err) => {
   if (err) {
