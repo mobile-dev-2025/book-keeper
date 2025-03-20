@@ -2,7 +2,6 @@
 const authRoutes = require('./routes/authRoutes');
 const bookRoutes = require('./routes/bookRoutes');
 const express = require('express');
-const mongoose = require('mongoose');
 const app = express();
 const port = 8000;
 
@@ -36,54 +35,57 @@ clientPromise.then(() => {
 
 // Route mounting
 app.use('/auth', authRoutes);
-app.use('/books', bookRoutes);
+app.use('/books', bookRoutes); 
 
 //Basic Hello world to check if server is running
 app.get('/', (req, res) =>{
     res.send('Hello World');
 });
 
-app.get("/TestG", async (req, res) => {
+
+
+app.get("/Books", async (req, res) => {
     try {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
-      const collection = db.collection("checkingbooks");
+      const collection = db.collection("Books");
       const result = await collection.insertOne({
-        owner: "subId:34345345",
+        subId,
         bookNo: 1,
-        title: "Book Title",
-        pageAmount: 255,
-        startDate: "25 march",
-        endDate: "25 april",
-        actualEndDate: "calculated",
-        currentPage: 1,
-        pagesPerDay: 20,
-        actualPagesPerDay: 25,
-        dailyReadHistory: "test",
+        bookTitle: req.body.bookTitle,
+        totalPages: req.body.totalPages,
+        startDate: new Date(req.body.startDate),
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
+        actualEndDate: req.body.endDate ? new Date(req.body.endDate) : null,
+        currentPage: req.body.currentPage || 1,
+        pagesPerDay: req.body.pagesPerDay || 0,
+        dailyReadHistory: [],
         bookComplete: false,
         currentBook: true,
-        hidden: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        hidden: false
       });
       res.json(result);
     } catch (error) {
-      console.error("Error adding test data:", error);
+      console.error("Failed to create book record:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
   
   //User creation 
   
-  app.get("/checkUsers", async (req, res) => {
+  app.get("/checkUser", async (req, res) => {
     try {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
-      const collection = db.collection("checkusers");
+      const collection = db.collection("Checkuser");
       const result = await collection.insertOne({
-        userId: req.userId,
+        subId,
       });
       res.json(result);
     } catch (error) {
-      console.error("Error adding test data:", error);
+      console.error("Error checking user:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
