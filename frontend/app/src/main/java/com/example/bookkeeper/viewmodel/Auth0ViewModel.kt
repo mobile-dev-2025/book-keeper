@@ -19,6 +19,25 @@ import com.example.bookkeeper.data.ApiService
 import com.example.bookkeeper.data.SubIdRequest
 
 /**
+ * Authentication states to represent different stages of auth process
+ */
+sealed class AuthState {
+    object Idle : AuthState()
+    object Loading : AuthState()
+    data class Success(val user: User) : AuthState()
+    data class Error(val message: String) : AuthState()
+}
+
+/**
+ * User data class to represent an authenticated user
+ */
+data class User(
+    val id: String,
+    val email: String,
+    val name: String = "Book Keeper User"
+)
+
+/**
  * ViewModel for handling authentication with Auth0.
  * Supports both web-based (email/password) and Google authentication.
  */
