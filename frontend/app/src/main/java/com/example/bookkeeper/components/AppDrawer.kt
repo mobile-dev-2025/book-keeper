@@ -3,6 +3,7 @@ package com.example.bookkeeper.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Book
@@ -14,12 +15,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.bookkeeper.viewmodel.Auth0ViewModel
+
+// Remote logo URL
+private const val LOGO_URL = "https://i.postimg.cc/YCpVhDBQ/Bookkeeper.png"
 
 // Data class for drawer items
 data class DrawerItem(
@@ -40,70 +48,33 @@ fun AppDrawer(
 
     // Create list of drawer items
     val drawerItems = listOf(
-        DrawerItem(
-            title = "My Books",
-            icon = Icons.Default.Book,
-            route = "home",
-            onClick = {
-                navController.navigate("home") {
-                    popUpTo(navController.graph.startDestinationId)
-                    launchSingleTop = true
-                }
-                onCloseDrawer()
+        DrawerItem("My Books", Icons.Default.Book, "home") {
+            navController.navigate("home") {
+                popUpTo(navController.graph.startDestinationId)
+                launchSingleTop = true
             }
-        ),
-        DrawerItem(
-            title = "Reading History",
-            icon = Icons.AutoMirrored.Filled.LibraryBooks,
-            route = "history",
-            onClick = {
-                navController.navigate("history") {
-                    launchSingleTop = true
-                }
-                onCloseDrawer()
-            }
-        ),
-        DrawerItem(
-            title = "Profile",
-            icon = Icons.Default.AccountCircle,
-            route = "profile",
-            onClick = {
-                navController.navigate("profile") {
-                    launchSingleTop = true
-                }
-                onCloseDrawer()
-            }
-        ),
-        DrawerItem(
-            title = "Settings",
-            icon = Icons.Default.Settings,
-            route = "settings",
-            onClick = {
-                navController.navigate("settings") {
-                    launchSingleTop = true
-                }
-                onCloseDrawer()
-            }
-        ),
-        DrawerItem(
-            title = "About",
-            icon = Icons.Default.Info,
-            route = "about",
-            onClick = {
-                navController.navigate("about") {
-                    launchSingleTop = true
-                }
-                onCloseDrawer()
-            }
-        ),
-        DrawerItem(
-            title = "Logout",
-            icon = Icons.AutoMirrored.Filled.ExitToApp,
-            onClick = {
-                onLogout()
-                onCloseDrawer()
-            }
-        )
+            onCloseDrawer()
+        },
+        DrawerItem("Reading History", Icons.AutoMirrored.Filled.LibraryBooks, "history") {
+            navController.navigate("history") { launchSingleTop = true }
+            onCloseDrawer()
+        },
+        DrawerItem("Profile", Icons.Default.AccountCircle, "profile") {
+            navController.navigate("profile") { launchSingleTop = true }
+            onCloseDrawer()
+        },
+        DrawerItem("Settings", Icons.Default.Settings, "settings") {
+            navController.navigate("settings") { launchSingleTop = true }
+            onCloseDrawer()
+        },
+        DrawerItem("About", Icons.Default.Info, "about") {
+            navController.navigate("about") { launchSingleTop = true }
+            onCloseDrawer()
+        },
+        DrawerItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, null) {
+            onLogout()
+            onCloseDrawer()
+        }
     )
 
     Column(
@@ -112,41 +83,46 @@ fun AppDrawer(
             .width(300.dp)
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Drawer header with user info
+        // Drawer header with user info including sub ID and updated logo
         DrawerHeader(
             userName = currentUser?.name ?: "Book Keeper User",
-            userEmail = currentUser?.email ?: ""
+            userEmail = currentUser?.email ?: "No Email",
+            userSubId = currentUser?.id ?: "No Sub ID"
         )
 
-        HorizontalDivider()  // Updated from Divider to HorizontalDivider
+        HorizontalDivider()
 
         // Drawer items
         drawerItems.forEach { item ->
-            DrawerItemRow(
-                item = item,
-                onItemClick = item.onClick
-            )
+            DrawerItemRow(item)
         }
     }
 }
 
 @Composable
-fun DrawerHeader(userName: String, userEmail: String) {
+fun DrawerHeader(userName: String, userEmail: String, userSubId: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .height(220.dp)
             .background(MaterialTheme.colorScheme.primary)
             .padding(16.dp),
         contentAlignment = Alignment.BottomStart
     ) {
-        Column {
-            // App logo/icon
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.LibraryBooks,
+        Column(horizontalAlignment = Alignment.Start) {
+            val context = LocalContext.current
+
+            // Updated logo (Remote Image)
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(LOGO_URL)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = "Book Keeper Logo",
-                modifier = Modifier.size(60.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(Color.White, CircleShape) // Circular background for better appearance
+                    .padding(8.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -165,16 +141,24 @@ fun DrawerHeader(userName: String, userEmail: String) {
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
             )
+
+            // User sub ID (Displayed for testing purposes)
+            Text(
+                text = "ID: $userSubId",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Light,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+            )
         }
     }
 }
 
 @Composable
-fun DrawerItemRow(item: DrawerItem, onItemClick: () -> Unit) {
+fun DrawerItemRow(item: DrawerItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onItemClick() }
+            .clickable { item.onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

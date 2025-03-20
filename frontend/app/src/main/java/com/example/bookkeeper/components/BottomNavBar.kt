@@ -6,8 +6,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,14 +32,14 @@ fun BottomNavBar(navController: NavController) {
             icon = Icons.Filled.Home
         ),
         BottomNavItem(
-            name = "Add",
+            name = "Add Book",
             route = "add_book",
             icon = Icons.Filled.Add
         ),
         BottomNavItem(
             name = "History",
-            route = "history",
-            icon = Icons.Outlined.History
+            route = "books",
+            icon = Icons.AutoMirrored.Filled.LibraryBooks
         )
     )
 
