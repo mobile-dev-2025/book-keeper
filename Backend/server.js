@@ -1,12 +1,14 @@
 //For creating server in node.js using express 
-const express = require('express');
+const express = require("express");
 const app = express();
 const port = 8000;
 
-app.use(express.json());
-app.use(express.urlencoded({extended: true}));
+require("dotenv").config();
 
-//connecting to database
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Connecting to database
 const { MongoClient } = require("mongodb");
 
 if (!process.env.MONGODB_URI) {
@@ -16,140 +18,122 @@ if (!process.env.MONGODB_URI) {
 const client = new MongoClient(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  ssl: true, // Make sure SSL is enabled
   tls: true, // Force TLS connection
   tlsAllowInvalidCertificates: false, // Valid certificates must be used
-  useUnifiedTopology: true,
 });
 
 const clientPromise = client.connect();
-clientPromise.then(() => {
-  console.log("Connected to MongoDB");
-}).catch((error) => {
-  console.error("Error connecting to MongoDB:", error);
+clientPromise
+  .then(() => {
+    console.log("Connected to MongoDB");
+  })
+  .catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
+  });
+
+// Basic Hello World to check if server is running
+app.get("/", (req, res) => {
+  res.send("Hello World");
 });
 
-// Route mounting
-app.use('/auth', authRoutes);
-app.use('/books', bookRoutes);
+app.post("/checkUser", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("users");
 
-//Basic Hello world to check if server is running
-app.get('/', (req, res) =>{
-    res.send('Hello World');
-});
+    // Extract userId from request body
+    const { userId } = req.body;
 
-//hardcoded books for testing endpoints
-let books = [
-    {
-        id: 1,
-        bookName: 'Book1',
-        pagesRead: 10,
-        startDate: '2024-03-01',
-        endDate: '2024-03-02',
-        notes: 'This is a note'
-    },
-    {
-        id: 2,
-        bookName: 'Book2',
-        pagesRead: 20,
-        startDate: '2024-03-02',
-        endDate: '2024-03-03',
-        notes: 'This is a testing note'
-    }, 
-    {
-        id: 3,
-        bookName: 'Book3',
-        pagesRead: 30,
-        startDate: '2024-03-03',
-        endDate: '2024-03-04',
-        notes: 'This is a testing note'
-    },
-   ];
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
 
-//To check if user exists in database after auth0 authentication
-app.post('/checkUser', async (req, res) => {
-    const { email,password } = req.body;
-    try {
-        let user = await User.findOne({ email });
-        if (!user) {
-          user = new User({ email, password });
-          await user.save();
-        }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);// to be replaced with auth0 token
-    res.send({ user, token });
+    // Check if the user already exists
+    let user = await collection.findOne({ userId });
+    let isNewUser = false;
+
+    if (!user) {
+      // Create new user if not found
+      const newUser = {
+        userId,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+      };
+
+      await collection.insertOne(newUser);
+      user = newUser;
+      isNewUser = true;
+    } else {
+      // Update last login timestamp
+      await collection.updateOne(
+        { userId },
+        { $set: { lastLogin: new Date() } }
+      );
+    }
+
+    res.json({
+      isNewUser,
+      userId: user.userId,
+    });
   } catch (error) {
-    res.status(400).send(error);
+    console.error("Error processing user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
-   });
-
-//To view users current book
-app.get('/currentBook', (req, res) => {
-    try{
-        if(!books){
-            return res.status(404).json({ error: 'No book found' });
-        }
-    res.status(200).json(books);
-} catch (error) {
-  console.error('Error retrieving books:', error);
-  res.status(500).json({ error: 'Internal Server Error' });
-}
 });
 
-//To view users current book
-app.get('/currentBook/:id', (req, res) => {
-    const bookId = parseInt(req.params.id);
-    const currentBook = books.find(currentBook => currentBook.id === bookId);
-    try{
-        if(!currentBook){
-            return res.status(404).json({ error: 'No book found' });
-        }
-    res.status(200).json(currentBook);
-} catch (error) {
-  console.error('Error retrieving books:', error);
-  res.status(500).json({ error: 'Internal Server Error' });
-}
-});
+app.post("/addBook", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
 
+    // Extract book details from request body
+    const { title, totalPages, userId, pagesRead, startDate, endDate } =
+      req.body;
 
-// to add a new book
-app.post('/addBook', (req, res) => {
-    try {
-        const {id, bookName, pagesRead, startDate, endDate, notes } = req.body;
-        console.log(bookName, pagesRead, startDate, endDate, notes );
-
-        if (!bookName || !pagesRead || !startDate || !endDate) {
-            return res.status(400).json({ error: 'Missing required fields' });    
-        }   
-        const newBook = {
-            id: books.length + 1,
-            bookName    : bookName,
-            pagesRead: parseInt(pagesRead),
-            startDate  : startDate,
-            endDate: endDate, 
-            notes: notes, 
-           
-        };
-
-        books.push(newBook);
-        res.status(201).json({ newBook });
-    } catch (error) {
-        console.error('Error adding book:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+    // Validate required fields
+    if (!title || !totalPages || !userId) {
+      return res
+        .status(400)
+        .json({ error: "title, totalPages, and userId are required" });
     }
-});
 
-
-
-//To view users book history
-app.get('/history', (req, res) => {
-    res.send('Book History');
-});
-
-
-//Listening to port
-app.listen(port, function(err){
-    if(err){
-        console.log(`Error in running the server: ${err}`);
+    // Check for duplicate books for the same user (optional)
+    const existingBook = await collection.findOne({ title, userId });
+    if (existingBook) {
+      return res
+        .status(400)
+        .json({ error: "Book with this title already exists for this user" });
     }
+
+    // Create new book
+    const newBook = {
+      title,
+      totalPages,
+      userId,
+      pagesRead: pagesRead || 0,
+      startDate: startDate ? new Date(startDate) : new Date(),
+      endDate: endDate ? new Date(endDate) : null,
+    };
+
+    await collection.insertOne(newBook);
+
+    res.json({
+      message: "Book added successfully",
+      book: newBook,
+    });
+  } catch (error) {
+    console.error("Error processing book:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Listening to port
+app.listen(port, (err) => {
+  if (err) {
+    console.log(`Error in running the server: ${err}`);
+  } else {
     console.log(`Server is running on port: ${port}`);
+  }
 });
