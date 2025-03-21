@@ -193,17 +193,19 @@ app.get("/currentBook", async (req, res) => {
   });
 
 // Updating the book details
-app.put("/currentBook", async (req, res) => {
+app.put("/currentBook", async (req, res) => { 
   try {
     const clientConnection = await clientPromise;
     const db = clientConnection.db("book-keeper");
     const collection = db.collection("books");
 
     const { userId, pagesRead, notes } = req.body;
+    
     if (!userId || pagesRead === undefined) {
       return res.status(400).json({ error: "userId and pagesRead are required" });
     }
 
+    // Find the most recent book being read
     const currentBook = await collection.findOne(
       {
         userId,
@@ -218,9 +220,14 @@ app.put("/currentBook", async (req, res) => {
 
     const updateFields = { pagesRead };
     if (notes) updateFields.notes = notes;
+
+    let responseMessage = "Current book updated successfully";
+
+    // If pagesRead reaches totalPages, mark the book as completed
     if (pagesRead >= currentBook.totalPages) {
-      updateFields.pagesRead = currentBook.totalPages;
+      updateFields.pagesRead = currentBook.totalPages; // Ensure it doesn't exceed
       updateFields.endDate = new Date();
+      responseMessage = "Book completed";
     }
 
     await collection.updateOne(
@@ -228,12 +235,13 @@ app.put("/currentBook", async (req, res) => {
       { $set: updateFields }
     );
 
-    res.json({ message: "Current book updated successfully" });
+    res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
   } catch (error) {
     console.error("Error updating current book:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 
 // Listening to port
