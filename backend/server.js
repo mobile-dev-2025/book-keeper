@@ -173,7 +173,7 @@ app.get("/currentBook", async (req, res) => {
     const currentBook = await collection.findOne(
       {
         userId,
-        $expr: { $lt: ["$pagesRead", "$totalPages"] }, // Check if pagesRead < totalPages
+        $expr: { $lt: ["$pagesRead", "$totalPages"] }, // To check if pagesRead < totalPages
       },
       { sort: { startDate: -1 } }
     );
@@ -225,7 +225,7 @@ app.put("/currentBook", async (req, res) => {
 
     // If pagesRead reaches totalPages, mark the book as completed
     if (pagesRead >= currentBook.totalPages) {
-      updateFields.pagesRead = currentBook.totalPages; // Ensure it doesn't exceed
+      updateFields.pagesRead = currentBook.totalPages; // Ensure it doesn't exceed totalPages
       updateFields.endDate = new Date();
       responseMessage = "Book completed";
     }
