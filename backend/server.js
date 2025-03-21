@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const port = 8000;
 
+// Load environment variables from .env file
 require("dotenv").config();
 
 app.use(express.json());
