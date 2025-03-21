@@ -11,23 +11,6 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 
-// Data classes for auth request and response
-data class SignUpRequest(
-    val email: String,
-    val password: String
-)
-
-data class LoginRequest(
-    val email: String,
-    val password: String
-)
-
-data class AuthResponse(
-    val token: String,
-    val userId: String,
-    val email: String
-)
-
 // Data classes for Book
 data class Book(
     val id: Int? = null,
@@ -51,11 +34,6 @@ data class SubIdRequest(
 // Combined API interface
 interface BookKeeperApi {
     // Auth endpoints
-    @POST("auth/signup")
-    suspend fun signUp(@Body request: SignUpRequest): Response<AuthResponse>
-
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
 
     // Book endpoints
     @GET("currentBook")
@@ -78,7 +56,7 @@ interface BookKeeperApi {
 // API service singleton
 object ApiService {
     // Updated BASE_URL to localhost
-    private const val BASE_URL = "http://192.168.0.18:8000/" // Replace with your local server IP
+    private const val BASE_URL = "http://192.168.0.16:8000/" // Replace with your local server IP
 
     // Create logging interceptor for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
