@@ -25,6 +25,7 @@ Book-Keeper is a native Android application built with Kotlin, designed to help 
 
 - [Tech Stack](#tech-stack)
 - [Installation and Setup](#installation-and-setup)
+- [Frontend](#frontend)
 
 ---
 
@@ -83,3 +84,47 @@ If using Room Database locally, no additional setup is needed.
 For remote database integration, update `local.properties` with the appropriate connection details.
 
 The app should now be running on your Android device or emulator.
+
+# Frontend
+
+## Technology
+
+Built with Kotlin
+
+Auth, Login, logout - Auth0
+
+## Screens
+
+## Splash
+
+![Splash Screen](/assets/screen/screen-splash.png)
+
+## Login
+
+![Login Screen](/assets/screen/screen-login.png)
+
+## Home
+
+![Home Screen](/assets/screen/screen-home.png)
+
+## Add Book
+
+![Add book Screen](/assets/screen/screen-add-book.png)
+
+# Backend
+
+## Technology
+
+Built with Node JS and Express JS
+
+Database is MongoDb
+
+Hosted on Render
+
+## Endpoints
+
+User Creation
+
+POST /checkUser
+
+a two part endpoint that is given the userID from the frontend
