@@ -155,6 +155,42 @@ app.get("/history", async (req, res) => {
   }
 });
 
+// Fetching the current book being read by the user
+app.get("/currentBook", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
+
+    // Extract userId from query parameters
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Find the most recent book being read (with pagesRead < totalPages)
+    const currentBook = await collection.findOne(
+      {
+        userId,
+        $expr: { $lt: ["$pagesRead", "$totalPages"] }, // Check if pagesRead < totalPages
+      },
+      { sort: { startDate: -1 } }
+    );
+
+    if (!currentBook) {
+      return res.json({ message: "No current book found for this user" });
+    }
+
+    res.json({
+      message: "Current book retrieved successfully",
+      currentBook,
+    });
+    } catch (error) {
+      console.error("Error fetching current book:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
 
 // Listening to port
 app.listen(port, (err) => {
