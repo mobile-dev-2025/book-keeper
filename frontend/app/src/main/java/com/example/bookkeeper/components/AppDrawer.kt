@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Book
@@ -15,8 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -112,18 +115,23 @@ fun DrawerHeader(userName: String, userEmail: String, userSubId: String) {
         Column(horizontalAlignment = Alignment.Start) {
             val context = LocalContext.current
 
-            // Updated logo (Remote Image)
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(LOGO_URL)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "Book Keeper Logo",
+            // Updated logo handling for square logo
+            Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .background(Color.White, CircleShape) // Circular background for better appearance
-                    .padding(8.dp)
-            )
+                    .background(Color.White, RoundedCornerShape(8.dp))
+                    .padding(4.dp)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(LOGO_URL)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Book Keeper Logo",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
