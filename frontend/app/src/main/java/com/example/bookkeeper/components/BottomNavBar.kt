@@ -5,10 +5,9 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,17 +28,17 @@ fun BottomNavBar(navController: NavController) {
         BottomNavItem(
             name = "Home",
             route = "home",
-            icon = Icons.Filled.Home
+            icon = Icons.Filled.Dashboard
         ),
         BottomNavItem(
             name = "Add Book",
             route = "add_book",
-            icon = Icons.Filled.Add
+            icon = Icons.Filled.AddCircle
         ),
         BottomNavItem(
             name = "History",
             route = "books",
-            icon = Icons.AutoMirrored.Filled.LibraryBooks
+            icon = Icons.AutoMirrored.Filled.MenuBook
         )
     )
 
@@ -55,15 +54,19 @@ fun BottomNavBar(navController: NavController) {
                     // Navigate only if we're not already on that route
                     if (currentRoute != item.route) {
                         navController.navigate(item.route) {
-                            // Pop up to the start destination of the graph to avoid
-                            // building up a large stack of destinations
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
-                            }
+                            // Use a simpler navigation pattern to avoid transition issues
+                            popUpTo(navController.graph.startDestinationId)
                             // Avoid multiple copies of the same destination
                             launchSingleTop = true
-                            // Restore state when reselecting a previously selected item
-                            restoreState = true
+                            // Don't restore state to prevent buggy transitions
+                            restoreState = false
+                            // Disable animations to speed up transitions
+                            anim {
+                                enter = 0
+                                exit = 0
+                                popEnter = 0
+                                popExit = 0
+                            }
                         }
                     }
                 },
