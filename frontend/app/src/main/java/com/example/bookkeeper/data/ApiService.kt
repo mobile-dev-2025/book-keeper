@@ -10,11 +10,13 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 // Data classes for Book
 data class Book(
     val id: Int? = null,
-    @SerializedName("bookName") val title: String,
+    @SerializedName("bookTitle") val title: String,
+    val totalPages: Int? = null,
     val pagesRead: Int,
     val startDate: String,
     val endDate: String,
@@ -23,40 +25,55 @@ data class Book(
 
 // Response wrapper for adding a book
 data class AddBookResponse(
-    val newBook: Book
+    val message: String,
+    val book: Book
 )
 
-// Data class for SubId
-data class SubIdRequest(
-    val subId: String
+// History response
+data class HistoryResponse(
+    val message: String,
+    val books: List<Book>
 )
 
-// Combined API interface
+// User check request/response
+data class UserCheckRequest(
+    val userId: String
+)
+
+data class UserCheckResponse(
+    val isNewUser: Boolean,
+    val userId: String
+)
+
+// Updated API interface
 interface BookKeeperApi {
-    // Auth endpoints
+    // User check endpoint
+    @POST("checkUser")
+    suspend fun checkUser(@Body request: UserCheckRequest): Response<UserCheckResponse>
 
     // Book endpoints
-    @GET("currentBook")
-    suspend fun getAllBooks(): Response<List<Book>>
-
-    @GET("currentBook/{id}")
-    suspend fun getBookById(@Path("id") id: Int): Response<Book>
+    @GET("history")
+    suspend fun getHistory(@Query("userId") userId: String): Response<HistoryResponse>
 
     @POST("addBook")
-    suspend fun addBook(@Body book: Book): Response<AddBookResponse>
-
-    @GET("history")
-    suspend fun getBookHistory(): Response<String>
-
-    // Endpoint to send subId to the server
-    @POST("user/subId")
-    suspend fun sendSubId(@Body subIdRequest: SubIdRequest): Response<Void>
+    suspend fun addBook(@Body book: BookAddRequest): Response<AddBookResponse>
 }
+
+// Request model for adding a book
+data class BookAddRequest(
+    val bookTitle: String,
+    val totalPages: Int,
+    val userId: String,
+    val pagesRead: Int,
+    val startDate: String,
+    val endDate: String,
+    val notes: String? = null
+)
 
 // API service singleton
 object ApiService {
     // Updated BASE_URL to localhost
-    private const val BASE_URL = "http://192.168.0.16:8000/" // Replace with your local server IP
+    private const val BASE_URL = "https://book-keeper-h3ha.onrender.com/" // Replace with your local server IP
 
     // Create logging interceptor for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

@@ -16,37 +16,68 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Define colors
+// Define original colors
 val CoralOrange = Color(0xFFFF8C5A) // The color used for buttons in the wireframe
 val White = Color(0xFFFFFFFF)
 val Black = Color(0xFF000000)
 val LightGray = Color(0xFFF5F5F5)
 val DarkGray = Color(0xFF333333)
 
+// 2025 Updated Color Palette
+val VibrantCoral = Color(0xFFFF5C5A)
+val DeepIndigo = Color(0xFF3D4B96)
+val PearlWhite = Color(0xFFF9F8F5)
+val CharcoalBlack = Color(0xFF1A1A1A)
+val StormGray = Color(0xFF4A4A4A)
+val LightSilver = Color(0xFFECECEC)
+val SoftLavender = Color(0xFFE6E0F0)
+
+// Define the light color scheme
 private val LightColorScheme = lightColorScheme(
-    primary = Black,
-    secondary = DarkGray,
-    tertiary = CoralOrange,
-    background = White,
-    surface = White,
+    primary = DeepIndigo,
     onPrimary = White,
+    primaryContainer = SoftLavender,
+    onPrimaryContainer = DeepIndigo,
+
+    secondary = StormGray,
     onSecondary = White,
+    secondaryContainer = LightSilver,
+    onSecondaryContainer = StormGray,
+
+    tertiary = VibrantCoral,
     onTertiary = White,
-    onBackground = Black,
-    onSurface = Black,
+
+    background = White,
+    onBackground = CharcoalBlack,
+
+    surface = White,
+    onSurface = CharcoalBlack,
+    surfaceVariant = LightSilver,
+    onSurfaceVariant = StormGray
 )
 
+// Define the dark color scheme
 private val DarkColorScheme = darkColorScheme(
-    primary = White,
-    secondary = LightGray,
-    tertiary = CoralOrange,
-    background = Black,
-    surface = DarkGray,
-    onPrimary = Black,
-    onSecondary = Black,
-    onTertiary = Black,
+    primary = SoftLavender,
+    onPrimary = DeepIndigo,
+    primaryContainer = Color(0xFF232C66),
+    onPrimaryContainer = SoftLavender,
+
+    secondary = LightSilver,
+    onSecondary = StormGray,
+    secondaryContainer = Color(0xFF2F3030),
+    onSecondaryContainer = LightSilver,
+
+    tertiary = VibrantCoral,
+    onTertiary = White,
+
+    background = CharcoalBlack,
     onBackground = White,
-    onSurface = White,
+
+    surface = Color(0xFF121212),
+    onSurface = Color(0xFFE2E2E2),
+    surfaceVariant = Color(0xFF2A2A2A),
+    onSurfaceVariant = Color(0xFFCACACA)
 )
 
 @Composable
@@ -69,10 +100,7 @@ fun BookKeeperTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-
-            @Suppress("DEPRECATION")
             window.statusBarColor = colorScheme.primary.toArgb()
-
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

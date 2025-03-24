@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,6 +104,12 @@ fun AppDrawer(
 
 @Composable
 fun DrawerHeader(userName: String, userEmail: String, userSubId: String) {
+    // State to track logo click count
+    var logoClickCount by remember { mutableStateOf(0) }
+
+    // State to control the visibility of the sub ID
+    val showSubId = logoClickCount >= 20
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,12 +121,16 @@ fun DrawerHeader(userName: String, userEmail: String, userSubId: String) {
         Column(horizontalAlignment = Alignment.Start) {
             val context = LocalContext.current
 
-            // Updated logo handling for square logo
+            // Updated logo handling for square logo with click counter
             Box(
                 modifier = Modifier
                     .size(80.dp)
                     .background(Color.White, RoundedCornerShape(8.dp))
                     .padding(4.dp)
+                    .clickable {
+                        // Increment click counter when logo is clicked
+                        logoClickCount++
+                    }
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -150,13 +160,15 @@ fun DrawerHeader(userName: String, userEmail: String, userSubId: String) {
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
             )
 
-            // User sub ID (Displayed for testing purposes)
-            Text(
-                text = "ID: $userSubId",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-            )
+            // User sub ID (Only shown after 20 clicks on the logo)
+            if (showSubId) {
+                Text(
+                    text = "ID: $userSubId",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

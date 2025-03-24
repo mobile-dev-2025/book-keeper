@@ -1,6 +1,7 @@
 package com.example.bookkeeper
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -70,6 +71,22 @@ fun BookKeeperApp() {
         if (authViewModel.isLoggedIn()) {
             navController.navigate("home") {
                 popUpTo("launch") { inclusive = true }
+            }
+        }
+    }
+
+    // Initialize BookViewModel with the current user ID - ADDED
+    LaunchedEffect(authViewModel.getCurrentUser()) {
+        authViewModel.getCurrentUser()?.let { user ->
+            // Initialize BookViewModel with the user's ID
+            bookViewModel.initializeWithUser(user.id)
+
+            // Check if this is a new or existing user
+            bookViewModel.checkUser(user.id) { isNewUser ->
+                if (isNewUser) {
+                    // Maybe show a welcome message or onboarding screen
+                    Log.d("MainActivity", "New user detected, could show onboarding")
+                }
             }
         }
     }

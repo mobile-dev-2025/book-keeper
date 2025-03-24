@@ -349,7 +349,7 @@ fun AddBookScreen(
                 maxLines = 5
             )
 
-            // Submit Button
+            // Submit Button - UPDATED
             Button(
                 onClick = {
                     // Validate input
@@ -358,15 +358,21 @@ fun AddBookScreen(
                         return@Button
                     }
 
-                    if (pagesRead.isBlank() || pagesRead.toIntOrNull() == null) {
-                        Toast.makeText(context, "Please enter a valid number of pages", Toast.LENGTH_SHORT).show()
+                    if (totalPages.isBlank() || totalPages.toIntOrNull() == null) {
+                        Toast.makeText(context, "Please enter total pages", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 
-                    // Submit form
+                    if (pagesRead.isBlank() || pagesRead.toIntOrNull() == null) {
+                        Toast.makeText(context, "Please enter a valid number of pages read", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    // Submit form with totalPages parameter
                     bookViewModel.addBook(
                         title = title,
                         pagesRead = pagesRead.toInt(),
+                        totalPages = totalPages.toInt(), // Add the total pages
                         startDate = dateFormatter.format(startDate),
                         endDate = dateFormatter.format(endDate),
                         notes = notes.ifBlank { null }
