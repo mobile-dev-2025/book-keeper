@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const port = 8000;
 
+// Load environment variables from .env file
 require("dotenv").config();
 
 app.use(express.json());
@@ -153,6 +154,94 @@ app.get("/history", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// Fetching the current book being read by the user
+app.get("/currentBook", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
+
+    // Extract userId from query parameters
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Find the most recent book being read (with pagesRead < totalPages)
+    const currentBook = await collection.findOne(
+      {
+        userId,
+        $expr: { $lt: ["$pagesRead", "$totalPages"] }, // To check if pagesRead < totalPages
+      },
+      { sort: { startDate: -1 } }
+    );
+
+    if (!currentBook) {
+      return res.json({ message: "No current book found for this user" });
+    }
+
+    res.json({
+      message: "Current book retrieved successfully",
+      currentBook,
+    });
+    } catch (error) {
+      console.error("Error fetching current book:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+// Updating the book details
+app.put("/currentBook", async (req, res) => { 
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
+
+    const { userId, pagesRead, notes } = req.body;
+    
+    if (!userId || pagesRead === undefined) {
+      return res.status(400).json({ error: "userId and pagesRead are required" });
+    }
+
+    // Find the most recent book being read
+    const currentBook = await collection.findOne(
+      {
+        userId,
+        $expr: { $lt: ["$pagesRead", "$totalPages"] },
+      },
+      { sort: { startDate: -1 } }
+    );
+
+    if (!currentBook) {
+      return res.status(404).json({ message: "No current book found for this user" });
+    }
+
+    const updateFields = { pagesRead };
+    if (notes) updateFields.notes = notes;
+
+    let responseMessage = "Current book updated successfully";
+
+    // If pagesRead reaches totalPages, mark the book as completed
+    if (pagesRead >= currentBook.totalPages) {
+      updateFields.pagesRead = currentBook.totalPages; // Ensure it doesn't exceed totalPages
+      updateFields.endDate = new Date();
+      responseMessage = "Book completed";
+    }
+
+    await collection.updateOne(
+      { _id: currentBook._id },
+      { $set: updateFields }
+    );
+
+    res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
+  } catch (error) {
+    console.error("Error updating current book:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 
 // Listening to port
