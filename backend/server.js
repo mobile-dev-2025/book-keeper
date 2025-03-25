@@ -112,7 +112,8 @@ app.post("/addBook", async (req, res) => {
       pagesRead: pagesRead || 0,
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : null,
-      notes: notes || ""
+      notes: notes || "",
+       
     
     };
 
@@ -241,8 +242,82 @@ app.put("/currentBook", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+// Fetching all reading plans from the database
+app.get("/readingPlans", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("reading-plans");
 
+    // Fetch all reading plans from the database
+    const readingPlans = await collection.find({}).toArray();
 
+    res.json({
+      message: "Reading plans retrieved successfully",
+      readingPlans,
+    });
+  } catch (error) {
+    console.error("Error fetching reading plans:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Creating a new reading plan
+app.post("/readingPlans", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+
+    const booksCollection = db.collection("books");
+    const readingPlansCollection = db.collection("reading-plans");
+
+    // Extract the reading plan details from request body
+    const { userId, bookTitle, estimatedDays } = req.body;
+
+    // Validate required fields
+    if (!userId || !bookTitle || !estimatedDays) {
+      return res.status(400).json({ error: "userId, bookTitle, and estimatedDays are required" });
+    }
+
+    // Find the book in the books collection
+    const book = await booksCollection.findOne({ bookTitle, userId });
+
+    if (!book) {
+      return res.status(404).json({ error: "Book not found for this user" });
+    }
+
+    // Calculate pages per day based on estimatedDays
+    const pagesPerDay = Math.max(Math.floor(book.totalPages / estimatedDays), 1);
+
+    // Calculate end date if not provided
+    const endDate = new Date(book.startDate.getTime() + estimatedDays * 24 * 60 * 60 * 1000);
+
+    // Create a new reading plan
+    const newReadingPlan = {
+      bookTitle,
+      userId,
+      totalPages: book.totalPages,
+      pagesRead: book.pagesRead || 0,
+      pagesPerDay,
+      startDate: book.startDate,
+      endDate,
+      estimatedDays,
+      createdAt: new Date(),
+    };
+
+    // Insert the new reading plan into the reading-plans collection
+    await readingPlansCollection.insertOne(newReadingPlan);
+
+    // Return success response
+    res.json({
+      message: "Reading plan created successfully",
+      readingPlan: newReadingPlan,
+    });
+  } catch (error) {
+    console.error("Error creating reading plan:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 // Listening to port
 app.listen(port, (err) => {
