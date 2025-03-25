@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.util.Log
 
 // States for book operations
 sealed class BookState {
@@ -35,7 +36,9 @@ sealed class BookDetailState {
 }
 
 class BookViewModel : ViewModel() {
-    private val repository = BookRepository()
+    private val TAG = "BookViewModel"
+    private var repository: BookRepository? = null
+    private var currentUserId: String? = null
 
     // State flows for observing book operations
     private val _booksState = MutableStateFlow<BookState>(BookState.Idle)
@@ -47,11 +50,23 @@ class BookViewModel : ViewModel() {
     private val _bookDetailState = MutableStateFlow<BookDetailState>(BookDetailState.Idle)
     val bookDetailState: StateFlow<BookDetailState> = _bookDetailState.asStateFlow()
 
+    // Initialize repository with user ID
+    fun initializeWithUser(userId: String) {
+        currentUserId = userId
+        repository = BookRepository(userId)
+        Log.d(TAG, "Repository initialized with user ID: $userId")
+    }
+
     // Function to load all books
     fun loadBooks() {
+        if (repository == null || currentUserId == null) {
+            _booksState.value = BookState.Error("User not initialized")
+            return
+        }
+
         viewModelScope.launch {
             _booksState.value = BookState.Loading
-            val result = repository.getAllBooks()
+            val result = repository!!.getAllBooks()
             _booksState.value = result.fold(
                 onSuccess = { BookState.Success(it) },
                 onFailure = { BookState.Error(it.message ?: "Failed to load books") }
@@ -61,9 +76,14 @@ class BookViewModel : ViewModel() {
 
     // Function to load a specific book
     fun loadBook(id: Int) {
+        if (repository == null) {
+            _bookDetailState.value = BookDetailState.Error("User not initialized")
+            return
+        }
+
         viewModelScope.launch {
             _bookDetailState.value = BookDetailState.Loading
-            val result = repository.getBookById(id)
+            val result = repository!!.getBookById(id)
             _bookDetailState.value = result.fold(
                 onSuccess = { BookDetailState.Success(it) },
                 onFailure = { BookDetailState.Error(it.message ?: "Failed to load book") }
@@ -71,21 +91,27 @@ class BookViewModel : ViewModel() {
         }
     }
 
-    // Function to add a new book - UPDATED to match server field names
-    fun addBook(title: String, pagesRead: Int, startDate: String, endDate: String, notes: String?) {
+    // Function to add a new book - Updated to match server expectations
+    fun addBook(title: String, pagesRead: Int, startDate: String, endDate: String, notes: String?, totalPages: Int = 0) {
+        if (repository == null || currentUserId == null) {
+            _addBookState.value = AddBookState.Error("User not initialized")
+            return
+        }
+
         viewModelScope.launch {
             _addBookState.value = AddBookState.Loading
 
-            // Changed from 'title' to 'bookName' to match server expectations
+            // Create book object matching server expectations
             val book = Book(
-                title = title,  // This maps to 'bookName' in the server due to @SerializedName in Book data class
+                title = title,
                 pagesRead = pagesRead,
+                totalPages = totalPages,
                 startDate = startDate,
                 endDate = endDate,
                 notes = notes
             )
 
-            val result = repository.addBook(book)
+            val result = repository!!.addBook(book, currentUserId!!)
             _addBookState.value = result.fold(
                 onSuccess = { AddBookState.Success(it) },
                 onFailure = { AddBookState.Error(it.message ?: "Failed to add book") }
@@ -100,6 +126,28 @@ class BookViewModel : ViewModel() {
     fun formatDate(date: Date): String {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return dateFormat.format(date)
+    }
+
+    // Check if user exists or needs to be created
+    fun checkUser(userId: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val tempRepository = BookRepository()
+            val result = tempRepository.checkUser(userId)
+
+            result.fold(
+                onSuccess = { response ->
+                    // Initialize repository with the confirmed user ID
+                    initializeWithUser(response.userId)
+                    onComplete(response.isNewUser)
+                },
+                onFailure = {
+                    Log.e(TAG, "Failed to check user: ${it.message}")
+                    // Initialize anyway to prevent app from breaking
+                    initializeWithUser(userId)
+                    onComplete(false)
+                }
+            )
+        }
     }
 
     // Reset states

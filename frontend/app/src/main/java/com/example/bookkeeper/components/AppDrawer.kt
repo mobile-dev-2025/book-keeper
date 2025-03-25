@@ -3,7 +3,9 @@ package com.example.bookkeeper.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Book
@@ -12,13 +14,17 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -45,6 +51,7 @@ fun AppDrawer(
     onCloseDrawer: () -> Unit
 ) {
     val currentUser = authViewModel.getCurrentUser()
+    val scrollState = rememberScrollState()
 
     // Create list of drawer items
     val drawerItems = listOf(
@@ -80,10 +87,10 @@ fun AppDrawer(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(300.dp)
+            .width(280.dp)
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Drawer header with user info including sub ID and updated logo
+        // Drawer header with user info and logo
         DrawerHeader(
             userName = currentUser?.name ?: "Book Keeper User",
             userEmail = currentUser?.email ?: "No Email",
@@ -92,62 +99,92 @@ fun AppDrawer(
 
         HorizontalDivider()
 
-        // Drawer items
-        drawerItems.forEach { item ->
-            DrawerItemRow(item)
+        // Scrollable drawer items list
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState)
+        ) {
+            // Drawer items
+            drawerItems.forEach { item ->
+                DrawerItemRow(item)
+            }
         }
+
+        // Add a small safe area at the bottom
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
 @Composable
 fun DrawerHeader(userName: String, userEmail: String, userSubId: String) {
-    Box(
+    // State to track logo click count
+    var logoClickCount by remember { mutableStateOf(0) }
+
+    // State to control the visibility of the sub ID
+    val showSubId = logoClickCount >= 20
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
-            .background(MaterialTheme.colorScheme.primary)
-            .padding(16.dp),
-        contentAlignment = Alignment.BottomStart
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        horizontalAlignment = Alignment.Start
     ) {
-        Column(horizontalAlignment = Alignment.Start) {
-            val context = LocalContext.current
+        val context = LocalContext.current
 
-            // Updated logo (Remote Image)
+        // Updated logo handling with better sizing
+        Box(
+            modifier = Modifier
+                .size(70.dp)
+                .background(Color.White, RoundedCornerShape(8.dp))
+                .padding(4.dp)
+                .clickable {
+                    // Increment click counter when logo is clicked
+                    logoClickCount++
+                }
+        ) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(LOGO_URL)
                     .crossfade(true)
                     .build(),
                 contentDescription = "Book Keeper Logo",
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(Color.White, CircleShape) // Circular background for better appearance
-                    .padding(8.dp)
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
             )
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-            // User name
-            Text(
-                text = userName,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary
-            )
+        // User name with overflow handling
+        Text(
+            text = userName,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
 
-            // User email
-            Text(
-                text = userEmail,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-            )
+        // User email with overflow handling
+        Text(
+            text = userEmail,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
 
-            // User sub ID (Displayed for testing purposes)
+        // User sub ID (Only shown after 20 clicks on the logo)
+        if (showSubId) {
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "ID: $userSubId",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -159,7 +196,7 @@ fun DrawerItemRow(item: DrawerItem) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { item.onClick() }
-            .padding(16.dp),
+            .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -173,7 +210,9 @@ fun DrawerItemRow(item: DrawerItem) {
         Text(
             text = item.title,
             fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
