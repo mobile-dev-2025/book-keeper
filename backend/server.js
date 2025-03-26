@@ -249,8 +249,19 @@ app.get("/readingPlans", async (req, res) => {
     const db = clientConnection.db("book-keeper");
     const collection = db.collection("reading-plans");
 
-    // Fetch all reading plans from the database
-    const readingPlans = await collection.find({}).toArray();
+    // Extract userId from query parameters
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Fetch reading plans for the specified user
+    const readingPlans = await collection.find({ userId }).toArray();
+
+    if (readingPlans.length === 0) {
+      return res.status(404).json({ message: "No reading plans found for this user" });
+    }
 
     res.json({
       message: "Reading plans retrieved successfully",
@@ -272,11 +283,11 @@ app.post("/readingPlans", async (req, res) => {
     const readingPlansCollection = db.collection("reading-plans");
 
     // Extract the reading plan details from request body
-    const { userId, bookTitle, estimatedDays } = req.body;
+    const { userId, bookTitle, pagesPerDay } = req.body;
 
     // Validate required fields
-    if (!userId || !bookTitle || !estimatedDays) {
-      return res.status(400).json({ error: "userId, bookTitle, and estimatedDays are required" });
+    if (!userId || !bookTitle || !pagesPerDay) {
+      return res.status(400).json({ error: "userId, bookTitle, and pagesPerDay are required" });
     }
 
     // Find the book in the books collection
@@ -286,10 +297,13 @@ app.post("/readingPlans", async (req, res) => {
       return res.status(404).json({ error: "Book not found for this user" });
     }
 
-    // Calculate pages per day based on estimatedDays
-    const pagesPerDay = Math.max(Math.floor(book.totalPages / estimatedDays), 1);
+    // Calculate the pages remaining
+    const pagesRemaining = book.totalPages - book.pagesRead;
 
-    // Calculate end date if not provided
+    // Dynamically calculate the estimated days to finish the book
+    let estimatedDays = Math.ceil(pagesRemaining / pagesPerDay); // rounding up to the nearest whole number
+
+    // Calculate end date based on estimatedDays
     const endDate = new Date(book.startDate.getTime() + estimatedDays * 24 * 60 * 60 * 1000);
 
     // Create a new reading plan
