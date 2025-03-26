@@ -109,7 +109,8 @@ app.post("/addBook", async (req, res) => {
       bookTitle,
       totalPages,
       userId,
-      pagesRead: pagesRead || 0,
+      pagesRead: 0,
+      currentPage:0,
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : null,
       notes: notes || "",
@@ -200,16 +201,17 @@ app.put("/currentBook", async (req, res) => {
     const db = clientConnection.db("book-keeper");
     const collection = db.collection("books");
 
-    const { userId, pagesRead, notes } = req.body;
+    const { userId, bookTitle, currentPage, notes } = req.body;
     
-    if (!userId || pagesRead === undefined) {
-      return res.status(400).json({ error: "userId and pagesRead are required" });
+    if (!userId || !bookTitle || currentPage === undefined) {
+      return res.status(400).json({ error: "userId bookTitle, and currentPage are required" });
     }
 
     // Find the most recent book being read
     const currentBook = await collection.findOne(
       {
         userId,
+        bookTitle,
         $expr: { $lt: ["$pagesRead", "$totalPages"] },
       },
       { sort: { startDate: -1 } }
@@ -219,14 +221,27 @@ app.put("/currentBook", async (req, res) => {
       return res.status(404).json({ message: "No current book found for this user" });
     }
 
-    const updateFields = { pagesRead };
+    // Ensure currentPage is greater than or equal to the previous lastPageRead (no going backward)
+    if (currentPage < currentBook.lastPageRead) {
+      return res.status(400).json({ error: "currentPage cannot be less than the lastPageRead" });
+    }
+
+     // Calculate pagesRead based on the difference between currentPage and lastPageRead
+     let pagesRead = currentBook.pagesRead + (currentPage - currentBook.lastPageRead);
+    // Ensure pagesRead doesn't exceed totalPages
+
+    if (pagesRead > currentBook.totalPages) {
+      pagesRead = currentBook.totalPages;
+    }
+
+    const updateFields = { currentPage, lastPageRead: currentPage, pagesRead };
     if (notes) updateFields.notes = notes;
 
     let responseMessage = "Current book updated successfully";
 
     // If pagesRead reaches totalPages, mark the book as completed
     if (pagesRead >= currentBook.totalPages) {
-      updateFields.pagesRead = currentBook.totalPages; // Ensure it doesn't exceed totalPages
+      updateFields.pagesRead = currentBook.totalPages; // to ensure it doesn't exceed totalPages
       updateFields.endDate = new Date();
       responseMessage = "Book completed";
     }
@@ -342,34 +357,27 @@ app.get("/lastRead", async (req, res) => {
     const db = clientConnection.db("book-keeper");
     const collection = db.collection("books");
 
-    // Extract userId from query parameters
-    const { userId } = req.query;
+    // Extract userId and bookTitle from query parameters
+    const { userId, bookTitle } = req.query;
 
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
+    if (!userId || !bookTitle) {
+      return res.status(400).json({ error: "userId and bookTitle are required" });
     }
 
-    // Fetch the user's reading history sorted by last updated
-    const userBooks = await collection
-      .find({ userId })
-      .sort({ lastUpdated: -1 })
-      .toArray();
-
-    if (!userBooks.length) {
-      return res.status(404).json({ message: "No reading history found for this user" });
-    }
-
-    // Get the most recently read book (same book read before)
-    const lastReadBook = userBooks.find((book) => book.pagesRead > 0);
+    // Fetch the user's reading history sorted by last updated for the same book
+    const lastReadBook = await collection.findOne(
+      { userId, bookTitle },
+      { sort: { lastUpdated: -1 } }
+    );
 
     if (!lastReadBook) {
-      return res.status(404).json({ message: "No previously read book found for this user" });
+      return res.status(404).json({ message: "No reading history found for this book and user" });
     }
 
     res.json({
       message: "Last read book retrieved successfully",
       bookTitle: lastReadBook.bookTitle,
-      pagesRead: lastReadBook.pagesRead,
+      currentPage: lastReadBook.currentPage,
     });
   } catch (error) {
     console.error("Error fetching last read book:", error);
