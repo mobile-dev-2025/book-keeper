@@ -251,7 +251,7 @@ app.get("/readingPlans", async (req, res) => {
 
     // Extract userId from query parameters
     const { userId } = req.query;
-
+   
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
@@ -333,6 +333,49 @@ app.post("/readingPlans", async (req, res) => {
   }
 });
 
+// Updating the reading plan
+
+// Fetch the last read book and last read page from the user's reading history
+app.get("/lastRead", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
+
+    // Extract userId from query parameters
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Fetch the user's reading history sorted by last updated
+    const userBooks = await collection
+      .find({ userId })
+      .sort({ lastUpdated: -1 })
+      .toArray();
+
+    if (!userBooks.length) {
+      return res.status(404).json({ message: "No reading history found for this user" });
+    }
+
+    // Get the most recently read book (same book read before)
+    const lastReadBook = userBooks.find((book) => book.pagesRead > 0);
+
+    if (!lastReadBook) {
+      return res.status(404).json({ message: "No previously read book found for this user" });
+    }
+
+    res.json({
+      message: "Last read book retrieved successfully",
+      bookTitle: lastReadBook.bookTitle,
+      pagesRead: lastReadBook.pagesRead,
+    });
+  } catch (error) {
+    console.error("Error fetching last read book:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 // Listening to port
 app.listen(port, (err) => {
   if (err) {
