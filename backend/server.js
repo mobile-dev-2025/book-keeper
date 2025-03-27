@@ -164,10 +164,10 @@ app.get("/currentBook", async (req, res) => {
     const db = clientConnection.db("book-keeper");
     const collection = db.collection("books");
 
-    // Extract userId from query parameters
-    const { userId } = req.query;
+    // Extract userId and bookTitle from query parameters
+    const { userId, bookTitle } = req.query;
 
-    if (!userId) {
+    if (!userId || !bookTitle) {
       return res.status(400).json({ error: "userId is required" });
     }
 
@@ -175,6 +175,7 @@ app.get("/currentBook", async (req, res) => {
     const currentBook = await collection.findOne(
       {
         userId,
+        bookTitle,
         $expr: { $lt: ["$pagesRead", "$totalPages"] }, // To check if pagesRead < totalPages
       },
       { sort: { startDate: -1 } }
@@ -264,7 +265,7 @@ app.put("/currentBook", async (req, res) => {
     }
   });
     
-  app.get("/readingPlans", async (req, res) => {
+app.get("/readingPlans", async (req, res) => {
     try {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
