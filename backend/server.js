@@ -86,7 +86,7 @@ app.post("/addBook", async (req, res) => {
     const collection = db.collection("books");
 
     // Extract book details from request body
-    const {  bookTitle, totalPages, userId, pagesRead, startDate, endDate, notes } =
+    const {  bookTitle, totalPages, userId, startDate, endDate, notes } =
       req.body;
 
     // Validate required fields
@@ -199,6 +199,7 @@ app.put("/currentBook", async (req, res) => {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
       const collection = db.collection("books");
+      
   
       const { userId, bookTitle, currentPage, notes } = req.body;
   
@@ -263,37 +264,41 @@ app.put("/currentBook", async (req, res) => {
     }
   });
     
-// Fetching all reading plans from the database
-app.get("/readingPlans", async (req, res) => {
-  try {
-    const clientConnection = await clientPromise;
-    const db = clientConnection.db("book-keeper");
-    const collection = db.collection("reading-plans");
-
-    // Extract userId from query parameters
-    const { userId } = req.query;
-   
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
+  app.get("/readingPlans", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("reading-plans");
+  
+      // Extract userId and optional bookTitle from query parameters
+      const { userId, bookTitle } = req.query;
+  
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+  
+      // Create query object to filter reading plans
+      const query = { userId };
+      if (bookTitle) {
+        query.bookTitle = bookTitle;
+      }
+  
+      // Fetch reading plans based on userId and optional bookTitle
+      const readingPlans = await collection.find(query).toArray();
+  
+      if (readingPlans.length === 0) {
+        return res.status(404).json({ message: bookTitle ? `No reading plans found for book "${bookTitle}"` : "No reading plans found for this user" });
+      }
+  
+      res.json({
+        message: bookTitle ? `Reading plans for "${bookTitle}" retrieved successfully` : "Reading plans retrieved successfully",
+        readingPlans,
+      });
+    } catch (error) {
+      console.error("Error fetching reading plans:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    // Fetch reading plans for the specified user
-    const readingPlans = await collection.find({ userId }).toArray();
-
-    if (readingPlans.length === 0) {
-      return res.status(404).json({ message: "No reading plans found for this user" });
-    }
-
-    res.json({
-      message: "Reading plans retrieved successfully",
-      readingPlans,
-    });
-  } catch (error) {
-    console.error("Error fetching reading plans:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
+  });
 // Creating a new reading plan
 app.post("/readingPlans", async (req, res) => {
   try {
@@ -383,7 +388,7 @@ app.get("/lastRead", async (req, res) => {
     res.json({
       message: "Last read book retrieved successfully",
       bookTitle: lastReadBook.bookTitle,
-      currentPage: lastReadBook.currentPage,
+      lastPageRead: lastReadBook.lastPageRead
     });
   } catch (error) {
     console.error("Error fetching last read book:", error);
