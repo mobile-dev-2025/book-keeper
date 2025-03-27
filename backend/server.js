@@ -86,7 +86,7 @@ app.post("/addBook", async (req, res) => {
     const collection = db.collection("books");
 
     // Extract book details from request body
-    const {  bookTitle, totalPages, userId, pagesRead, startDate, endDate, notes } =
+    const {  bookTitle, totalPages, userId, startDate, endDate, notes } =
       req.body;
 
     // Validate required fields
@@ -109,7 +109,8 @@ app.post("/addBook", async (req, res) => {
       bookTitle,
       totalPages,
       userId,
-      pagesRead: pagesRead || 0,
+      pagesRead: 0,
+      currentPage:0,
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : null,
       notes: notes || "",
@@ -163,10 +164,10 @@ app.get("/currentBook", async (req, res) => {
     const db = clientConnection.db("book-keeper");
     const collection = db.collection("books");
 
-    // Extract userId from query parameters
-    const { userId } = req.query;
+    // Extract userId and bookTitle from query parameters
+    const { userId, bookTitle } = req.query;
 
-    if (!userId) {
+    if (!userId || !bookTitle) {
       return res.status(400).json({ error: "userId is required" });
     }
 
@@ -174,6 +175,7 @@ app.get("/currentBook", async (req, res) => {
     const currentBook = await collection.findOne(
       {
         userId,
+        bookTitle,
         $expr: { $lt: ["$pagesRead", "$totalPages"] }, // To check if pagesRead < totalPages
       },
       { sort: { startDate: -1 } }
@@ -193,86 +195,111 @@ app.get("/currentBook", async (req, res) => {
     }
   });
 
-// Updating the book details
-app.put("/currentBook", async (req, res) => { 
-  try {
-    const clientConnection = await clientPromise;
-    const db = clientConnection.db("book-keeper");
-    const collection = db.collection("books");
-
-    const { userId, pagesRead, notes } = req.body;
+app.put("/currentBook", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("books");
+      
+  
+      const { userId, bookTitle, currentPage, notes } = req.body;
+  
+      if (!userId || !bookTitle || currentPage === undefined) {
+        return res.status(400).json({ error: "userId, bookTitle, and currentPage are required" });
+      }
+  
+      // Find the most recent book being read
+      const currentBook = await collection.findOne({ userId, bookTitle });
+  
+      if (!currentBook) {
+        return res.status(404).json({ message: "No current book found for this user" });
+      }
+  
+      // Ensure currentPage is greater than or equal to lastPageRead (no going backward)
+      if (currentBook.lastPageRead !== null && currentPage < currentBook.lastPageRead) {
+        return res.status(400).json({ error: "currentPage cannot be less than the lastPageRead" });
+      }
+  
+      // Get the previous currentPage before updating (Default to 0 if first update)
+      const previousCurrentPage = currentBook.currentPage || 0;
+      
+       // Update lastPageRead correctly
+    const lastPageRead = previousCurrentPage;
+  
+      // Calculate pagesRead as the difference between currentPage and lastPageRead
+      const pagesRead = currentPage - lastPageRead;
+  
+      // Ensure pagesRead does not exceed totalPages
+      if (currentPage > currentBook.totalPages) {
+        return res.status(400).json({ error: "currentPage cannot exceed totalPages" });
+      }
+  
+      // Prepare update fields
+      const updateFields = {
+        lastPageRead, // Store previous currentPage before updating
+        currentPage,  // Update to the new currentPage
+        pagesRead,    // Correct difference calculation
+      };
+  
+      if (notes) updateFields.notes = notes;
+  
+      let responseMessage = "Current book updated successfully";
+  
+      // If user reaches the last page, mark book as completed
+      if (currentPage === currentBook.totalPages) {
+        updateFields.endDate = new Date(); // Set endDate
+        responseMessage = "Book completed";
+      }
+  
+      // Update the book document
+      await collection.updateOne(
+        { _id: currentBook._id },
+        { $set: updateFields }
+      );
+  
+      // Return the updated book details
+      res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
+    } catch (error) {
+      console.error("Error updating current book:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
     
-    if (!userId || pagesRead === undefined) {
-      return res.status(400).json({ error: "userId and pagesRead are required" });
-    }
-
-    // Find the most recent book being read
-    const currentBook = await collection.findOne(
-      {
-        userId,
-        $expr: { $lt: ["$pagesRead", "$totalPages"] },
-      },
-      { sort: { startDate: -1 } }
-    );
-
-    if (!currentBook) {
-      return res.status(404).json({ message: "No current book found for this user" });
-    }
-
-    const updateFields = { pagesRead };
-    if (notes) updateFields.notes = notes;
-
-    let responseMessage = "Current book updated successfully";
-
-    // If pagesRead reaches totalPages, mark the book as completed
-    if (pagesRead >= currentBook.totalPages) {
-      updateFields.pagesRead = currentBook.totalPages; // Ensure it doesn't exceed totalPages
-      updateFields.endDate = new Date();
-      responseMessage = "Book completed";
-    }
-
-    await collection.updateOne(
-      { _id: currentBook._id },
-      { $set: updateFields }
-    );
-
-    res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
-  } catch (error) {
-    console.error("Error updating current book:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-// Fetching all reading plans from the database
 app.get("/readingPlans", async (req, res) => {
-  try {
-    const clientConnection = await clientPromise;
-    const db = clientConnection.db("book-keeper");
-    const collection = db.collection("reading-plans");
-
-    // Extract userId from query parameters
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("reading-plans");
+  
+      // Extract userId and optional bookTitle from query parameters
+      const { userId, bookTitle } = req.query;
+  
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+  
+      // Create query object to filter reading plans
+      const query = { userId };
+      if (bookTitle) {
+        query.bookTitle = bookTitle;
+      }
+  
+      // Fetch reading plans based on userId and optional bookTitle
+      const readingPlans = await collection.find(query).toArray();
+  
+      if (readingPlans.length === 0) {
+        return res.status(404).json({ message: bookTitle ? `No reading plans found for book "${bookTitle}"` : "No reading plans found for this user" });
+      }
+  
+      res.json({
+        message: bookTitle ? `Reading plans for "${bookTitle}" retrieved successfully` : "Reading plans retrieved successfully",
+        readingPlans,
+      });
+    } catch (error) {
+      console.error("Error fetching reading plans:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    // Fetch reading plans for the specified user
-    const readingPlans = await collection.find({ userId }).toArray();
-
-    if (readingPlans.length === 0) {
-      return res.status(404).json({ message: "No reading plans found for this user" });
-    }
-
-    res.json({
-      message: "Reading plans retrieved successfully",
-      readingPlans,
-    });
-  } catch (error) {
-    console.error("Error fetching reading plans:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
+  });
 // Creating a new reading plan
 app.post("/readingPlans", async (req, res) => {
   try {
@@ -333,6 +360,42 @@ app.post("/readingPlans", async (req, res) => {
   }
 });
 
+// Updating the reading plan
+
+// Fetch the last read book and last read page from the user's reading history
+app.get("/lastRead", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+    const collection = db.collection("books");
+
+    // Extract userId and bookTitle from query parameters
+    const { userId, bookTitle } = req.query;
+
+    if (!userId || !bookTitle) {
+      return res.status(400).json({ error: "userId and bookTitle are required" });
+    }
+
+    // Fetch the user's reading history sorted by last updated for the same book
+    const lastReadBook = await collection.findOne(
+      { userId, bookTitle },
+      { sort: { lastUpdated: -1 } }
+    );
+
+    if (!lastReadBook) {
+      return res.status(404).json({ message: "No reading history found for this book and user" });
+    }
+
+    res.json({
+      message: "Last read book retrieved successfully",
+      bookTitle: lastReadBook.bookTitle,
+      lastPageRead: lastReadBook.lastPageRead
+    });
+  } catch (error) {
+    console.error("Error fetching last read book:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 // Listening to port
 app.listen(port, (err) => {
   if (err) {
