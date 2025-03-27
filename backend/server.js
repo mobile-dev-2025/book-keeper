@@ -194,69 +194,75 @@ app.get("/currentBook", async (req, res) => {
     }
   });
 
-// Updating the book details
-app.put("/currentBook", async (req, res) => { 
-  try {
-    const clientConnection = await clientPromise;
-    const db = clientConnection.db("book-keeper");
-    const collection = db.collection("books");
-
-    const { userId, bookTitle, currentPage, notes } = req.body;
+app.put("/currentBook", async (req, res) => {
+    try {
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("books");
+  
+      const { userId, bookTitle, currentPage, notes } = req.body;
+  
+      if (!userId || !bookTitle || currentPage === undefined) {
+        return res.status(400).json({ error: "userId, bookTitle, and currentPage are required" });
+      }
+  
+      // Find the most recent book being read
+      const currentBook = await collection.findOne({ userId, bookTitle });
+  
+      if (!currentBook) {
+        return res.status(404).json({ message: "No current book found for this user" });
+      }
+  
+      // Ensure currentPage is greater than or equal to lastPageRead (no going backward)
+      if (currentBook.lastPageRead !== null && currentPage < currentBook.lastPageRead) {
+        return res.status(400).json({ error: "currentPage cannot be less than the lastPageRead" });
+      }
+  
+      // Get the previous currentPage before updating (Default to 0 if first update)
+      const previousCurrentPage = currentBook.currentPage || 0;
+      
+       // Update lastPageRead correctly
+    const lastPageRead = previousCurrentPage;
+  
+      // Calculate pagesRead as the difference between currentPage and lastPageRead
+      const pagesRead = currentPage - lastPageRead;
+  
+      // Ensure pagesRead does not exceed totalPages
+      if (currentPage > currentBook.totalPages) {
+        return res.status(400).json({ error: "currentPage cannot exceed totalPages" });
+      }
+  
+      // Prepare update fields
+      const updateFields = {
+        lastPageRead, // Store previous currentPage before updating
+        currentPage,  // Update to the new currentPage
+        pagesRead,    // Correct difference calculation
+      };
+  
+      if (notes) updateFields.notes = notes;
+  
+      let responseMessage = "Current book updated successfully";
+  
+      // If user reaches the last page, mark book as completed
+      if (currentPage === currentBook.totalPages) {
+        updateFields.endDate = new Date(); // Set endDate
+        responseMessage = "Book completed";
+      }
+  
+      // Update the book document
+      await collection.updateOne(
+        { _id: currentBook._id },
+        { $set: updateFields }
+      );
+  
+      // Return the updated book details
+      res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
+    } catch (error) {
+      console.error("Error updating current book:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
     
-    if (!userId || !bookTitle || currentPage === undefined) {
-      return res.status(400).json({ error: "userId bookTitle, and currentPage are required" });
-    }
-
-    // Find the most recent book being read
-    const currentBook = await collection.findOne(
-      {
-        userId,
-        bookTitle,
-        $expr: { $lt: ["$pagesRead", "$totalPages"] },
-      },
-      { sort: { startDate: -1 } }
-    );
-
-    if (!currentBook) {
-      return res.status(404).json({ message: "No current book found for this user" });
-    }
-
-    // Ensure currentPage is greater than or equal to the previous lastPageRead (no going backward)
-    if (currentPage < currentBook.lastPageRead) {
-      return res.status(400).json({ error: "currentPage cannot be less than the lastPageRead" });
-    }
-
-     // Calculate pagesRead based on the difference between currentPage and lastPageRead
-     let pagesRead = currentBook.pagesRead + (currentPage - currentBook.lastPageRead);
-    // Ensure pagesRead doesn't exceed totalPages
-
-    if (pagesRead > currentBook.totalPages) {
-      pagesRead = currentBook.totalPages;
-    }
-
-    const updateFields = { currentPage, lastPageRead: currentPage, pagesRead };
-    if (notes) updateFields.notes = notes;
-
-    let responseMessage = "Current book updated successfully";
-
-    // If pagesRead reaches totalPages, mark the book as completed
-    if (pagesRead >= currentBook.totalPages) {
-      updateFields.pagesRead = currentBook.totalPages; // to ensure it doesn't exceed totalPages
-      updateFields.endDate = new Date();
-      responseMessage = "Book completed";
-    }
-
-    await collection.updateOne(
-      { _id: currentBook._id },
-      { $set: updateFields }
-    );
-
-    res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
-  } catch (error) {
-    console.error("Error updating current book:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
 // Fetching all reading plans from the database
 app.get("/readingPlans", async (req, res) => {
   try {
