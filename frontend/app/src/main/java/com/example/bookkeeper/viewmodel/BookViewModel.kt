@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bookkeeper.data.Book
 import com.example.bookkeeper.data.BookRepository
+import com.example.bookkeeper.data.ReadingPlan
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +29,13 @@ sealed class AddBookState {
     data class Error(val message: String) : AddBookState()
 }
 
+sealed class ReadingPlanState {
+    object Idle : ReadingPlanState()
+    object Loading : ReadingPlanState()
+    data class Success(val readingPlan: ReadingPlan) : ReadingPlanState()
+    data class Error(val message: String) : ReadingPlanState()
+}
+
 sealed class BookDetailState {
     object Idle : BookDetailState()
     object Loading : BookDetailState()
@@ -49,6 +57,10 @@ class BookViewModel : ViewModel() {
 
     private val _bookDetailState = MutableStateFlow<BookDetailState>(BookDetailState.Idle)
     val bookDetailState: StateFlow<BookDetailState> = _bookDetailState.asStateFlow()
+
+    // Reading plan state
+    private val _readingPlanState = MutableStateFlow<ReadingPlanState>(ReadingPlanState.Idle)
+    val readingPlanState: StateFlow<ReadingPlanState> = _readingPlanState.asStateFlow()
 
     // Initialize repository with user ID
     fun initializeWithUser(userId: String) {
@@ -91,8 +103,8 @@ class BookViewModel : ViewModel() {
         }
     }
 
-    // Function to add a new book - Updated to match server expectations
-    fun addBook(title: String, pagesRead: Int, startDate: String, endDate: String, notes: String?, totalPages: Int = 0) {
+    // Function to add a new book with enhanced error handling
+    fun addBook(title: String, pagesRead: Int, startDate: String, endDate: String, notes: String?, totalPages: Int) {
         if (repository == null || currentUserId == null) {
             _addBookState.value = AddBookState.Error("User not initialized")
             return
@@ -100,8 +112,34 @@ class BookViewModel : ViewModel() {
 
         viewModelScope.launch {
             _addBookState.value = AddBookState.Loading
+            Log.d(TAG, "Adding book without reading plan: $title")
+            Log.d(TAG, "Book details: totalPages=$totalPages, pagesRead=$pagesRead")
+            Log.d(TAG, "Dates: startDate=$startDate, endDate=$endDate")
 
-            // Create book object matching server expectations
+            // Validate input
+            try {
+                if (title.isBlank()) {
+                    throw IllegalArgumentException("Book title cannot be empty")
+                }
+
+                if (totalPages <= 0) {
+                    throw IllegalArgumentException("Total pages must be positive")
+                }
+
+                if (pagesRead < 0) {
+                    throw IllegalArgumentException("Pages read cannot be negative")
+                }
+
+                if (pagesRead > totalPages) {
+                    throw IllegalArgumentException("Pages read cannot exceed total pages")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Validation failed", e)
+                _addBookState.value = AddBookState.Error(e.message ?: "Invalid input")
+                return@launch
+            }
+
+            // Create book object
             val book = Book(
                 title = title,
                 pagesRead = pagesRead,
@@ -113,9 +151,143 @@ class BookViewModel : ViewModel() {
 
             val result = repository!!.addBook(book, currentUserId!!)
             _addBookState.value = result.fold(
-                onSuccess = { AddBookState.Success(it) },
-                onFailure = { AddBookState.Error(it.message ?: "Failed to add book") }
+                onSuccess = {
+                    Log.d(TAG, "Book added successfully with ID: ${it.id}")
+                    AddBookState.Success(it)
+                },
+                onFailure = {
+                    Log.e(TAG, "Failed to add book: ${it.message}")
+                    AddBookState.Error(it.message ?: "Failed to add book")
+                }
             )
+
+            // Reload books after adding a new one
+            loadBooks()
+        }
+    }
+
+    // Function to create a reading plan
+    fun createReadingPlan(bookTitle: String, pagesPerDay: Int) {
+        if (repository == null || currentUserId == null) {
+            _readingPlanState.value = ReadingPlanState.Error("User not initialized")
+            return
+        }
+
+        viewModelScope.launch {
+            _readingPlanState.value = ReadingPlanState.Loading
+            Log.d(TAG, "Creating reading plan only: $bookTitle, $pagesPerDay pages per day")
+
+            val result = repository!!.createReadingPlan(bookTitle, pagesPerDay, currentUserId!!)
+            _readingPlanState.value = result.fold(
+                onSuccess = {
+                    Log.d(TAG, "Reading plan created successfully")
+                    ReadingPlanState.Success(it.readingPlan)
+                },
+                onFailure = {
+                    Log.e(TAG, "Failed to create reading plan: ${it.message}")
+                    ReadingPlanState.Error(it.message ?: "Failed to create reading plan")
+                }
+            )
+        }
+    }
+
+    // Add book and create reading plan in one operation with enhanced error handling
+    fun addBookWithReadingPlan(
+        title: String,
+        pagesRead: Int,
+        startDate: String,
+        endDate: String,
+        notes: String?,
+        totalPages: Int,
+        pagesPerDay: Int
+    ) {
+        if (repository == null || currentUserId == null) {
+            _addBookState.value = AddBookState.Error("User not initialized")
+            return
+        }
+
+        viewModelScope.launch {
+            _addBookState.value = AddBookState.Loading
+
+            // Debug log
+            Log.d(TAG, "Starting addBookWithReadingPlan - title: $title, pagesPerDay: $pagesPerDay")
+            Log.d(TAG, "Dates - startDate: $startDate, endDate: $endDate")
+            Log.d(TAG, "Page info - totalPages: $totalPages, pagesRead: $pagesRead")
+
+            // Validate input
+            try {
+                if (title.isBlank()) {
+                    throw IllegalArgumentException("Book title cannot be empty")
+                }
+
+                if (totalPages <= 0) {
+                    throw IllegalArgumentException("Total pages must be positive")
+                }
+
+                if (pagesRead < 0) {
+                    throw IllegalArgumentException("Pages read cannot be negative")
+                }
+
+                if (pagesRead > totalPages) {
+                    throw IllegalArgumentException("Pages read cannot exceed total pages")
+                }
+
+                if (pagesPerDay <= 0) {
+                    throw IllegalArgumentException("Pages per day must be positive")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Validation failed", e)
+                _addBookState.value = AddBookState.Error(e.message ?: "Invalid input")
+                return@launch
+            }
+
+            // First add the book
+            val book = Book(
+                title = title,
+                pagesRead = pagesRead,
+                totalPages = totalPages,
+                startDate = startDate,
+                endDate = endDate,
+                notes = notes
+            )
+
+            val bookResult = repository!!.addBook(book, currentUserId!!)
+
+            val addBookState = bookResult.fold(
+                onSuccess = {
+                    Log.d(TAG, "Book added successfully, now creating reading plan")
+                    AddBookState.Success(it)
+                },
+                onFailure = {
+                    Log.e(TAG, "Failed to add book: ${it.message}")
+                    AddBookState.Error(it.message ?: "Failed to add book")
+                }
+            )
+
+            _addBookState.value = addBookState
+
+            // If book was added successfully, create reading plan
+            if (bookResult.isSuccess) {
+                _readingPlanState.value = ReadingPlanState.Loading
+
+                // Debug log
+                Log.d(TAG, "Book added, now creating reading plan with pagesPerDay: $pagesPerDay")
+
+                val planResult = repository!!.createReadingPlan(title, pagesPerDay, currentUserId!!)
+
+                val readingPlanState = planResult.fold(
+                    onSuccess = {
+                        Log.d(TAG, "Reading plan created successfully")
+                        ReadingPlanState.Success(it.readingPlan)
+                    },
+                    onFailure = {
+                        Log.e(TAG, "Failed to create reading plan: ${it.message}")
+                        ReadingPlanState.Error(it.message ?: "Failed to create reading plan")
+                    }
+                )
+
+                _readingPlanState.value = readingPlanState
+            }
 
             // Reload books after adding a new one
             loadBooks()
@@ -161,5 +333,9 @@ class BookViewModel : ViewModel() {
 
     fun resetBooksState() {
         _booksState.value = BookState.Idle
+    }
+
+    fun resetReadingPlanState() {
+        _readingPlanState.value = ReadingPlanState.Idle
     }
 }

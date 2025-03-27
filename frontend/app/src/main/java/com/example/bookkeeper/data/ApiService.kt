@@ -45,6 +45,56 @@ data class UserCheckResponse(
     val userId: String
 )
 
+// Request model for adding a book with proper toString() for debugging
+data class BookAddRequest(
+    val bookTitle: String,
+    val totalPages: Int,
+    val userId: String,
+    val pagesRead: Int,
+    val startDate: String,
+    val endDate: String,
+    val notes: String? = null
+) {
+    override fun toString(): String {
+        return "BookAddRequest(bookTitle='$bookTitle', totalPages=$totalPages, userId='$userId', " +
+                "pagesRead=$pagesRead, startDate='$startDate', endDate='$endDate', notes=$notes)"
+    }
+}
+
+// Reading plan request/response models
+data class ReadingPlanRequest(
+    val bookTitle: String,
+    val userId: String,
+    val pagesPerDay: Int
+) {
+    override fun toString(): String {
+        return "ReadingPlanRequest(bookTitle='$bookTitle', userId='$userId', pagesPerDay=$pagesPerDay)"
+    }
+}
+
+data class ReadingPlan(
+    val bookTitle: String,
+    val userId: String,
+    val totalPages: Int,
+    val pagesRead: Int,
+    val pagesPerDay: Int,
+    val startDate: String,
+    val endDate: String,
+    val estimatedDays: Int,
+    val createdAt: String
+)
+
+data class ReadingPlanResponse(
+    val message: String,
+    val readingPlan: ReadingPlan
+)
+
+// Response for reading plans list
+data class ReadingPlansResponse(
+    val message: String,
+    val readingPlans: List<ReadingPlan>
+)
+
 // Updated API interface
 interface BookKeeperApi {
     // User check endpoint
@@ -57,18 +107,14 @@ interface BookKeeperApi {
 
     @POST("addBook")
     suspend fun addBook(@Body book: BookAddRequest): Response<AddBookResponse>
-}
 
-// Request model for adding a book
-data class BookAddRequest(
-    val bookTitle: String,
-    val totalPages: Int,
-    val userId: String,
-    val pagesRead: Int,
-    val startDate: String,
-    val endDate: String,
-    val notes: String? = null
-)
+    // Reading plan endpoints
+    @POST("readingPlans")
+    suspend fun createReadingPlan(@Body readingPlan: ReadingPlanRequest): Response<ReadingPlanResponse>
+
+    @GET("readingPlans")
+    suspend fun getReadingPlans(@Query("userId") userId: String): Response<ReadingPlansResponse>
+}
 
 // API service singleton
 object ApiService {
