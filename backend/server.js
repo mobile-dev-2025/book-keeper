@@ -86,7 +86,7 @@ app.post("/addBook", async (req, res) => {
     const collection = db.collection("books");
 
     // Extract book details from request body
-    const {  bookTitle, totalPages, userId, startDate, endDate, notes } =
+    const {  bookTitle, totalPages, userId, pagesRead,startDate, endDate, notes } =
       req.body;
 
     // Validate required fields
@@ -109,7 +109,7 @@ app.post("/addBook", async (req, res) => {
       bookTitle,
       totalPages,
       userId,
-      pagesRead: 0,
+      pagesRead: pagesRead || 0, // Ensure pagesRead defaults to 0 if not provided
       currentPage:0,
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : null,
