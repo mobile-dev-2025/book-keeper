@@ -168,7 +168,7 @@ app.get("/currentBook", async (req, res) => {
     const { userId, bookTitle } = req.query;
 
     if (!userId || !bookTitle) {
-      return res.status(400).json({ error: "userId is required" });
+      return res.status(400).json({ error: "userId and bookTitle is required" });
     }
 
     // Find the most recent book being read (with pagesRead < totalPages)
@@ -396,6 +396,47 @@ app.get("/lastRead", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+//marking the book as completed
+app.post('/finishedBook', async (req, res) => {
+  try {
+      const { bookTitle, userId } = req.body;
+
+      // Get the database connection
+      const clientConnection = await clientPromise;
+      const db = clientConnection.db("book-keeper");
+      const collection = db.collection("books");
+
+      // Check if the book exists in the database
+      const book = await collection.findOne({ bookTitle, userId });
+
+      if (!book) {
+          return res.status(404).json({ error: "Book not found" });
+      }
+
+      // Mark the book as completed
+      const updateFields = {
+          pagesRead: book.totalPages,
+          currentPage: book.totalPages,
+          endDate: new Date()
+      };
+
+      await collection.updateOne(
+          { bookTitle, userId },
+          { $set: updateFields }
+      );
+
+      res.status(200).json({
+          message: "Book marked as completed successfully",
+          book: { ...book, ...updateFields } // Return updated book
+      });
+  } catch (error) {
+      console.error("Error marking book as finished:", error);
+      res.status(500).json({ error: "An error occurred while marking the book as finished" });
+  }
+});
+
+
 // Listening to port
 app.listen(port, (err) => {
   if (err) {
