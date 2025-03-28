@@ -51,9 +51,35 @@ class BookRepository(private val userId: String? = null) {
 
     suspend fun addBook(book: Book, userId: String): Result<Book> {
         return try {
+            // Log before creating request to check values
+            Log.d(TAG, "Adding book - Title: ${book.title}")
+            Log.d(TAG, "Total Pages: ${book.totalPages}")
+            Log.d(TAG, "Pages Read: ${book.pagesRead}")
+            Log.d(TAG, "Start Date: ${book.startDate}")
+            Log.d(TAG, "End Date: ${book.endDate}")
+            Log.d(TAG, "Notes: ${book.notes}")
+            Log.d(TAG, "User ID: $userId")
+
+            // Validate data before making the API call
+            if (book.title.isBlank()) {
+                return Result.failure(Exception("Book title cannot be empty"))
+            }
+
+            if (book.totalPages == null || book.totalPages <= 0) {
+                return Result.failure(Exception("Total pages must be a positive number"))
+            }
+
+            if (book.pagesRead < 0) {
+                return Result.failure(Exception("Pages read cannot be negative"))
+            }
+
+            if (book.pagesRead > book.totalPages) {
+                return Result.failure(Exception("Pages read cannot exceed total pages"))
+            }
+
             val bookRequest = BookAddRequest(
                 bookTitle = book.title,
-                totalPages = book.totalPages ?: 0,
+                totalPages = book.totalPages,
                 userId = userId,
                 pagesRead = book.pagesRead,
                 startDate = book.startDate,
@@ -61,7 +87,11 @@ class BookRepository(private val userId: String? = null) {
                 notes = book.notes
             )
 
+            Log.d(TAG, "Sending request: $bookRequest")
+
             val response = api.addBook(bookRequest)
+            Log.d(TAG, "Add book API response code: ${response.code()}")
+
             if (response.isSuccessful) {
                 val addBookResponse = response.body()
                 if (addBookResponse != null) {
@@ -74,10 +104,80 @@ class BookRepository(private val userId: String? = null) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 Log.e(TAG, "Error adding book: ${response.code()} - $errorBody")
-                Result.failure(Exception("Failed to add book: ${response.code()}"))
+
+                // Check for specific errors
+                when {
+                    errorBody.contains("already exists") -> {
+                        Result.failure(Exception("A book with this title already exists in your library"))
+                    }
+                    errorBody.contains("required") -> {
+                        Result.failure(Exception("Missing required fields: $errorBody"))
+                    }
+                    else -> {
+                        Result.failure(Exception("Failed to add book: ${response.code()} - $errorBody"))
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception adding book", e)
+            Result.failure(e)
+        }
+    }
+
+    // Create a reading plan for a book with enhanced error handling
+    suspend fun createReadingPlan(bookTitle: String, pagesPerDay: Int, userId: String): Result<ReadingPlanResponse> {
+        return try {
+            // Validations
+            if (bookTitle.isBlank()) {
+                return Result.failure(Exception("Book title cannot be empty"))
+            }
+
+            if (pagesPerDay <= 0) {
+                return Result.failure(Exception("Pages per day must be positive"))
+            }
+
+            val readingPlanRequest = ReadingPlanRequest(
+                bookTitle = bookTitle,
+                pagesPerDay = pagesPerDay,
+                userId = userId
+            )
+
+            // Log the request payload
+            Log.d(TAG, "Creating reading plan with: bookTitle=$bookTitle, pagesPerDay=$pagesPerDay, userId=$userId")
+
+            val response = api.createReadingPlan(readingPlanRequest)
+
+            // Log the raw response
+            Log.d(TAG, "Reading plan API response code: ${response.code()}")
+
+            if (response.isSuccessful) {
+                val readingPlanResponse = response.body()
+                if (readingPlanResponse != null) {
+                    Log.d(TAG, "Reading plan created successfully: ${readingPlanResponse.message}")
+                    Result.success(readingPlanResponse)
+                } else {
+                    Log.e(TAG, "Empty response when creating reading plan")
+                    Result.failure(Exception("Empty response when creating reading plan"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e(TAG, "Error creating reading plan: ${response.code()} - $errorBody")
+
+                // Check for specific errors
+                when {
+                    errorBody.contains("not found") -> {
+                        Result.failure(Exception("Book not found. Make sure to add the book first."))
+                    }
+                    errorBody.contains("required") -> {
+                        Result.failure(Exception("Missing required fields: $errorBody"))
+                    }
+                    else -> {
+                        Result.failure(Exception("Failed to create reading plan: ${response.code()} - $errorBody"))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception creating reading plan", e)
             Result.failure(e)
         }
     }

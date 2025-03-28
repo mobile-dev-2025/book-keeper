@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,11 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bookkeeper.viewmodel.Auth0ViewModel
 import com.example.bookkeeper.viewmodel.BookViewModel
-import androidx.compose.material.icons.outlined.Book
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.Numbers
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,7 +52,9 @@ fun HomeScreen(
     // State for form fields
     var bookTitle by remember { mutableStateOf("") }
     var pagesPerDay by remember { mutableStateOf("") }
+    var averagePagesPerDay by remember { mutableStateOf("") }
     var daysLeft by remember { mutableStateOf("") }
+    var actualDaysUntilFinish by remember { mutableStateOf("") }
     var currentPage by remember { mutableStateOf("") }
 
     // State for reading history
@@ -86,7 +88,7 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         "Home",
@@ -114,89 +116,125 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Book title input with dropdown
-            Box(
-                modifier = Modifier.fillMaxWidth()
+            OutlinedTextField(
+                value = if (selectedBookIndex >= 0 && selectedBookIndex < books.size)
+                    books[selectedBookIndex].title else bookTitle,
+                onValueChange = { bookTitle = it },
+                placeholder = { Text("Book title") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Book,
+                        contentDescription = "Book"
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Dropdown",
+                        modifier = Modifier.clickable { expanded = true }
+                    )
+                },
+                singleLine = true
+            )
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                books.forEachIndexed { index, book ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                book.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        onClick = {
+                            selectedBookIndex = index
+                            bookTitle = book.title
+                            expanded = false
+                        }
+                    )
+                }
+            }
+
+            // Row 1: Reading plan and Average pages per day
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
-                    value = if (selectedBookIndex >= 0 && selectedBookIndex < books.size)
-                        books[selectedBookIndex].title else bookTitle,
-                    onValueChange = { bookTitle = it },
-                    placeholder = { Text("Book title") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    value = pagesPerDay,
+                    onValueChange = { pagesPerDay = it },
+                    placeholder = { Text("PPD Reading plan") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.Book,
-                            contentDescription = "Book"
-                        )
-                    },
-                    trailingIcon = {
-                        Icon(
-                            Icons.Default.ArrowDropDown,
-                            contentDescription = "Dropdown",
-                            modifier = Modifier.clickable { expanded = true }
+                            imageVector = Icons.Default.Book,
+                            contentDescription = "Pages per day"
                         )
                     },
                     singleLine = true
                 )
 
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                ) {
-                    books.forEachIndexed { index, book ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    book.title,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
-                            onClick = {
-                                selectedBookIndex = index
-                                bookTitle = book.title
-                                expanded = false
-                            }
+                OutlinedTextField(
+                    value = averagePagesPerDay,
+                    onValueChange = { averagePagesPerDay = it },
+                    placeholder = { Text("Average Pages per day") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Book,
+                            contentDescription = "Average pages"
                         )
-                    }
-                }
+                    },
+                    singleLine = true
+                )
             }
 
-            // Pages per day input
-            OutlinedTextField(
-                value = pagesPerDay,
-                onValueChange = { pagesPerDay = it },
-                placeholder = { Text("pages per day / actual pages per day") },
+            // Row 2: Days left and Actual days until finish
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.MenuBook,
-                        contentDescription = "Pages per day"
-                    )
-                },
-                singleLine = true
-            )
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = daysLeft,
+                    onValueChange = { daysLeft = it },
+                    placeholder = { Text("Days left to finn") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = "Days left"
+                        )
+                    },
+                    singleLine = true
+                )
 
-            // Advised days left input
-            OutlinedTextField(
-                value = daysLeft,
-                onValueChange = { daysLeft = it },
-                placeholder = { Text("Advised days left / Actual days left") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Timer,
-                        contentDescription = "Days left"
-                    )
-                },
-                singleLine = true
-            )
+                OutlinedTextField(
+                    value = actualDaysUntilFinish,
+                    onValueChange = { actualDaysUntilFinish = it },
+                    placeholder = { Text("Actual Day until finnish") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = "Actual days"
+                        )
+                    },
+                    singleLine = true
+                )
+            }
 
-            // Current Page and Done buttons row
+            // Row 3: Current Page and Done
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -206,18 +244,18 @@ fun HomeScreen(
                     onValueChange = { currentPage = it },
                     placeholder = { Text("Current Page") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.Numbers,
+                            imageVector = Icons.Default.Book,
                             contentDescription = "Current Page"
                         )
                     },
                     singleLine = true
                 )
 
-                // Done button implementation as a proper button
-                Button(
+                // Done button
+                OutlinedButton(
                     onClick = {
                         if (currentPage.isNotEmpty()) {
                             // Add current reading entry to history
@@ -239,11 +277,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp), // Match height with TextField
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Row(
@@ -252,7 +286,7 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.CheckCircle,
+                            imageVector = Icons.Default.Check,
                             contentDescription = "Done"
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -261,12 +295,12 @@ fun HomeScreen(
                 }
             }
 
-            // Daily Read History card
+            // Last Read History card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -281,12 +315,12 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.LibraryBooks,
-                            contentDescription = "History"
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = "Last Read"
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Daily Read History",
+                            text = "Last Read",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
@@ -335,19 +369,16 @@ fun HomeScreen(
             ) {
                 OutlinedButton(
                     onClick = { /* Mark book as finished */ },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.width(200.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.LibraryBooks,
+                            imageVector = Icons.Default.Check,
                             contentDescription = "Finished Book"
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -356,8 +387,8 @@ fun HomeScreen(
                 }
             }
 
-            // Add spacing at the bottom for better scrolling experience
-            Spacer(modifier = Modifier.height(16.dp))
+            // Add spacing at the bottom
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
