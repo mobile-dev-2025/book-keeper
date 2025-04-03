@@ -182,6 +182,87 @@ class BookRepository(private val userId: String? = null) {
         }
     }
 
+    /**
+     * Updates the reading progress of a book
+     */
+    suspend fun updateBookProgress(bookTitle: String, userId: String, currentPage: Int): Result<Book> {
+        return try {
+            if (userId.isBlank() || bookTitle.isBlank()) {
+                Log.e(TAG, "Cannot update book progress: userId or bookTitle is null/blank")
+                return Result.failure(Exception("User ID and Book Title are required"))
+            }
+
+            Log.d(TAG, "Updating book progress - Title: $bookTitle, currentPage: $currentPage")
+
+            val updateRequest = UpdateBookProgressRequest(
+                userId = userId,
+                bookTitle = bookTitle,
+                currentPage = currentPage
+            )
+
+            val response = api.updateBookProgress(updateRequest)
+            Log.d(TAG, "Update book progress API response code: ${response.code()}")
+
+            if (response.isSuccessful) {
+                val updateResponse = response.body()
+                if (updateResponse != null) {
+                    Log.d(TAG, "Book progress updated successfully: ${updateResponse.message}")
+                    Result.success(updateResponse.updatedBook)
+                } else {
+                    Log.e(TAG, "Empty response when updating book progress")
+                    Result.failure(Exception("Empty response when updating book progress"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e(TAG, "Error updating book progress: ${response.code()} - $errorBody")
+                Result.failure(Exception("Failed to update book progress: ${response.code()} - $errorBody"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception updating book progress", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Marks a book as finished
+     */
+    suspend fun markBookAsFinished(bookTitle: String, userId: String): Result<Book> {
+        return try {
+            if (userId.isBlank() || bookTitle.isBlank()) {
+                Log.e(TAG, "Cannot mark book as finished: userId or bookTitle is null/blank")
+                return Result.failure(Exception("User ID and Book Title are required"))
+            }
+
+            Log.d(TAG, "Marking book as finished - Title: $bookTitle")
+
+            val finishRequest = FinishBookRequest(
+                bookTitle = bookTitle,
+                userId = userId
+            )
+
+            val response = api.markBookAsFinished(finishRequest)
+            Log.d(TAG, "Mark book as finished API response code: ${response.code()}")
+
+            if (response.isSuccessful) {
+                val finishResponse = response.body()
+                if (finishResponse != null) {
+                    Log.d(TAG, "Book marked as finished successfully: ${finishResponse.message}")
+                    Result.success(finishResponse.book)
+                } else {
+                    Log.e(TAG, "Empty response when marking book as finished")
+                    Result.failure(Exception("Empty response when marking book as finished"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e(TAG, "Error marking book as finished: ${response.code()} - $errorBody")
+                Result.failure(Exception("Failed to mark book as finished: ${response.code()} - $errorBody"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception marking book as finished", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun checkUser(userId: String): Result<UserCheckResponse> {
         return try {
             val request = UserCheckRequest(userId)

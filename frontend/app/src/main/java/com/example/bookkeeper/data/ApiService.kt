@@ -9,6 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -95,6 +96,30 @@ data class ReadingPlansResponse(
     val readingPlans: List<ReadingPlan>
 )
 
+// Update book progress models
+data class UpdateBookProgressRequest(
+    val userId: String,
+    val bookTitle: String,
+    val currentPage: Int,
+    val notes: String? = null
+)
+
+data class UpdateBookResponse(
+    val message: String,
+    val updatedBook: Book
+)
+
+// Finish book models
+data class FinishBookRequest(
+    val bookTitle: String,
+    val userId: String
+)
+
+data class FinishBookResponse(
+    val message: String,
+    val book: Book
+)
+
 // Updated API interface
 interface BookKeeperApi {
     // User check endpoint
@@ -114,12 +139,20 @@ interface BookKeeperApi {
 
     @GET("readingPlans")
     suspend fun getReadingPlans(@Query("userId") userId: String): Response<ReadingPlansResponse>
+
+    // Update book progress endpoint
+    @PUT("currentBook")
+    suspend fun updateBookProgress(@Body request: UpdateBookProgressRequest): Response<UpdateBookResponse>
+
+    // Mark book as finished endpoint
+    @POST("finishedBook")
+    suspend fun markBookAsFinished(@Body request: FinishBookRequest): Response<FinishBookResponse>
 }
 
 // API service singleton
 object ApiService {
     // Updated BASE_URL to localhost
-    private const val BASE_URL = "https://book-keeper-h3ha.onrender.com/" // Replace with your local server IP
+    private const val BASE_URL = "https://book-keeper-h3ha.onrender.com/" // Replace with your local server IP 
 
     // Create logging interceptor for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
