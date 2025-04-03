@@ -320,50 +320,54 @@ fun HomeScreen(
                             .verticalScroll(scrollState),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Book selection dropdown
-                        OutlinedTextField(
-                            value = selectedBook?.title ?: "",
-                            onValueChange = { },
-                            readOnly = true,
-                            placeholder = { Text("Select a book to track") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Book,
-                                    contentDescription = "Book"
-                                )
-                            },
-                            trailingIcon = {
-                                Icon(
-                                    Icons.Default.ArrowDropDown,
-                                    contentDescription = "Dropdown",
-                                    modifier = Modifier.clickable { expanded = true }
-                                )
-                            },
-                            label = { Text("Current Book") },
-                            singleLine = true
-                        )
-
-                        DropdownMenu(
+                        // FIXED: Book selection dropdown using ExposedDropdownMenuBox
+                        ExposedDropdownMenuBox(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
+                            onExpandedChange = { expanded = it },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            books.forEachIndexed { index, book ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            book.title,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    onClick = {
-                                        selectedBookIndex = index
-                                        expanded = false
-                                    }
-                                )
+                            OutlinedTextField(
+                                value = selectedBook?.title ?: "",
+                                onValueChange = { },
+                                readOnly = true,
+                                placeholder = { Text("Select a book to track") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(), // Key for proper anchoring
+                                shape = RoundedCornerShape(12.dp),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Book,
+                                        contentDescription = "Book"
+                                    )
+                                },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                },
+                                label = { Text("Current Book") },
+                                singleLine = true
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.exposedDropdownSize()
+                            ) {
+                                books.forEachIndexed { index, book ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                book.title,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        },
+                                        onClick = {
+                                            selectedBookIndex = index
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
 
