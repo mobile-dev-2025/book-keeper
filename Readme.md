@@ -26,6 +26,7 @@ Book-Keeper is a native Android application built with Kotlin, designed to help 
 - [Tech Stack](#tech-stack)
 - [Installation and Setup](#installation-and-setup)
 - [Frontend](#frontend)
+- [Diagrams](#diagrams)
 
 ---
 
@@ -103,28 +104,37 @@ Auth, Login, logout - Auth0
 
 ![Login Screen](/assets/screen/screen-login.png)
 
-## Home
+## Home - No Book Added
 
-![Home Screen](/assets/screen/screen-home.png)
+![Home Screen](/assets/screen/screen-home-no-book.png)
 
 ## Add Book
 
 ![Add book Screen](/assets/screen/screen-add-book.png)
 
-# Backend
+## Home - Book Added
 
-## Technology
+![Home Screen (no book added)](/assets/screen/screen-home-populated.png)
 
-Built with Node JS and Express JS
+## History
 
-Database is MongoDb
+![Home Screen (no book added)](/assets/screen/screen-history.png)
 
-Hosted on Render
 
-## Endpoints
+# Diagrams
 
-User Creation
+## Screens
 
-POST /checkUser
+![Screens](/assets/diagrams/diagram-screens.png)
 
-a two part endpoint that is given the userID from the frontend
+
+## User Flow
+
+![User Flow](/assets/diagrams/diagram-user-flow.png)
+
+## Managing product backlog
+
+The product was tracked using a Github project board:
+
+https://github.com/orgs/mobile-dev-2025/projects/1
+

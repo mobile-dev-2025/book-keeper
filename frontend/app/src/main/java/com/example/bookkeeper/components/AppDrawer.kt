@@ -7,22 +7,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
+
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,7 +52,7 @@ fun AppDrawer(
     val currentUser = authViewModel.getCurrentUser()
     val scrollState = rememberScrollState()
 
-    // Create list of drawer items
+    // Create list of drawer items - removed Profile, Settings, and About
     val drawerItems = listOf(
         DrawerItem("My Books", Icons.Default.Book, "home") {
             navController.navigate("home") {
@@ -64,18 +63,6 @@ fun AppDrawer(
         },
         DrawerItem("Reading History", Icons.AutoMirrored.Filled.LibraryBooks, "history") {
             navController.navigate("history") { launchSingleTop = true }
-            onCloseDrawer()
-        },
-        DrawerItem("Profile", Icons.Default.AccountCircle, "profile") {
-            navController.navigate("profile") { launchSingleTop = true }
-            onCloseDrawer()
-        },
-        DrawerItem("Settings", Icons.Default.Settings, "settings") {
-            navController.navigate("settings") { launchSingleTop = true }
-            onCloseDrawer()
-        },
-        DrawerItem("About", Icons.Default.Info, "about") {
-            navController.navigate("about") { launchSingleTop = true }
             onCloseDrawer()
         },
         DrawerItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, null) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.bookkeeper.data.Book
 import com.example.bookkeeper.data.BookRepository
 import com.example.bookkeeper.data.ReadingPlan
+import com.example.bookkeeper.data.ApiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,11 +37,25 @@ sealed class ReadingPlanState {
     data class Error(val message: String) : ReadingPlanState()
 }
 
+sealed class ReadingPlansState {
+    object Idle : ReadingPlansState()
+    object Loading : ReadingPlansState()
+    data class Success(val readingPlans: List<ReadingPlan>) : ReadingPlansState()
+    data class Error(val message: String) : ReadingPlansState()
+}
+
 sealed class BookDetailState {
     object Idle : BookDetailState()
     object Loading : BookDetailState()
     data class Success(val book: Book) : BookDetailState()
     data class Error(val message: String) : BookDetailState()
+}
+
+sealed class UpdateBookState {
+    object Idle : UpdateBookState()
+    object Loading : UpdateBookState()
+    data class Success(val book: Book) : UpdateBookState()
+    data class Error(val message: String) : UpdateBookState()
 }
 
 class BookViewModel : ViewModel() {
@@ -61,6 +76,14 @@ class BookViewModel : ViewModel() {
     // Reading plan state
     private val _readingPlanState = MutableStateFlow<ReadingPlanState>(ReadingPlanState.Idle)
     val readingPlanState: StateFlow<ReadingPlanState> = _readingPlanState.asStateFlow()
+
+    // Reading plans list state
+    private val _readingPlansState = MutableStateFlow<ReadingPlansState>(ReadingPlansState.Idle)
+    val readingPlansState: StateFlow<ReadingPlansState> = _readingPlansState.asStateFlow()
+
+    // Update book state
+    private val _updateBookState = MutableStateFlow<UpdateBookState>(UpdateBookState.Idle)
+    val updateBookState: StateFlow<UpdateBookState> = _updateBookState.asStateFlow()
 
     // Initialize repository with user ID
     fun initializeWithUser(userId: String) {
@@ -83,6 +106,38 @@ class BookViewModel : ViewModel() {
                 onSuccess = { BookState.Success(it) },
                 onFailure = { BookState.Error(it.message ?: "Failed to load books") }
             )
+        }
+    }
+
+    // Function to load all reading plans
+    fun loadReadingPlans() {
+        if (repository == null || currentUserId == null) {
+            _readingPlansState.value = ReadingPlansState.Error("User not initialized")
+            return
+        }
+
+        viewModelScope.launch {
+            _readingPlansState.value = ReadingPlansState.Loading
+
+            try {
+                val response = ApiService.api.getReadingPlans(currentUserId!!)
+
+                if (response.isSuccessful) {
+                    val readingPlansResponse = response.body()
+                    if (readingPlansResponse != null) {
+                        _readingPlansState.value = ReadingPlansState.Success(readingPlansResponse.readingPlans)
+                        Log.d(TAG, "Reading plans loaded: ${readingPlansResponse.readingPlans.size}")
+                    } else {
+                        _readingPlansState.value = ReadingPlansState.Error("Empty response when loading reading plans")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    _readingPlansState.value = ReadingPlansState.Error("Failed to load reading plans: ${response.code()} - $errorBody")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading reading plans", e)
+                _readingPlansState.value = ReadingPlansState.Error(e.message ?: "Error loading reading plans")
+            }
         }
     }
 
@@ -188,6 +243,9 @@ class BookViewModel : ViewModel() {
                     ReadingPlanState.Error(it.message ?: "Failed to create reading plan")
                 }
             )
+
+            // Reload reading plans after creating a new one
+            loadReadingPlans()
         }
     }
 
@@ -289,8 +347,107 @@ class BookViewModel : ViewModel() {
                 _readingPlanState.value = readingPlanState
             }
 
-            // Reload books after adding a new one
+            // Reload books and reading plans after adding a new one
             loadBooks()
+            loadReadingPlans()
+        }
+    }
+
+    /**
+     * Updates a book's reading progress in the database using the specific API endpoint
+     */
+    fun updateBookProgress(bookId: Int, title: String, currentPage: Int, totalPages: Int) {
+        if (repository == null || currentUserId == null) {
+            _updateBookState.value = UpdateBookState.Error("User not initialized")
+            return
+        }
+
+        viewModelScope.launch {
+            _updateBookState.value = UpdateBookState.Loading
+            Log.d(TAG, "Updating book progress for '$title': currentPage=$currentPage")
+
+            try {
+                // Validate input
+                if (title.isBlank()) {
+                    throw IllegalArgumentException("Book title cannot be empty")
+                }
+
+                if (currentPage < 0) {
+                    throw IllegalArgumentException("Current page cannot be negative")
+                }
+
+                if (currentPage > totalPages) {
+                    throw IllegalArgumentException("Current page cannot exceed total pages")
+                }
+
+                // Call the specific API endpoint for updating book progress
+                val result = repository!!.updateBookProgress(
+                    bookTitle = title,
+                    userId = currentUserId!!,
+                    currentPage = currentPage
+                )
+
+                _updateBookState.value = result.fold(
+                    onSuccess = {
+                        Log.d(TAG, "Book progress updated successfully")
+                        UpdateBookState.Success(it)
+                    },
+                    onFailure = {
+                        Log.e(TAG, "Failed to update book progress: ${it.message}")
+                        UpdateBookState.Error(it.message ?: "Failed to update book progress")
+                    }
+                )
+
+                // Reload books to refresh the data
+                loadBooks()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating book progress", e)
+                _updateBookState.value = UpdateBookState.Error(e.message ?: "Error updating progress")
+            }
+        }
+    }
+
+    /**
+     * Marks a book as finished using the specific API endpoint
+     */
+    fun markBookAsFinished(bookId: Int, title: String, totalPages: Int) {
+        if (repository == null || currentUserId == null) {
+            _updateBookState.value = UpdateBookState.Error("User not initialized")
+            return
+        }
+
+        viewModelScope.launch {
+            _updateBookState.value = UpdateBookState.Loading
+            Log.d(TAG, "Marking book '$title' as finished")
+
+            try {
+                if (title.isBlank()) {
+                    throw IllegalArgumentException("Book title cannot be empty")
+                }
+
+                // Call the specific API endpoint for marking a book as finished
+                val result = repository!!.markBookAsFinished(
+                    bookTitle = title,
+                    userId = currentUserId!!
+                )
+
+                _updateBookState.value = result.fold(
+                    onSuccess = {
+                        Log.d(TAG, "Book marked as finished successfully")
+                        UpdateBookState.Success(it)
+                    },
+                    onFailure = {
+                        Log.e(TAG, "Failed to mark book as finished: ${it.message}")
+                        UpdateBookState.Error(it.message ?: "Failed to mark book as finished")
+                    }
+                )
+
+                // Reload books to refresh the data
+                loadBooks()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error marking book as finished", e)
+                _updateBookState.value = UpdateBookState.Error(e.message ?: "Error marking as finished")
+            }
         }
     }
 
@@ -337,5 +494,13 @@ class BookViewModel : ViewModel() {
 
     fun resetReadingPlanState() {
         _readingPlanState.value = ReadingPlanState.Idle
+    }
+
+    fun resetReadingPlansState() {
+        _readingPlansState.value = ReadingPlansState.Idle
+    }
+
+    fun resetUpdateBookState() {
+        _updateBookState.value = UpdateBookState.Idle
     }
 }

@@ -9,19 +9,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -239,136 +236,6 @@ fun BooksList(books: List<Book>, paddingValues: PaddingValues) {
     }
 }
 
-// Original book card component (for backward compatibility)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EnhancedBookCard(book: Book) {
-    // Safe unwrapping of nullable integers with defaults
-    val pagesRead = book.pagesRead ?: 0
-    val totalPages = book.totalPages ?: 0
-    val hasTotal = totalPages > 0
-    val readingProgress = if (hasTotal) pagesRead.toFloat() / totalPages else 0f
-    val progressPercent = (readingProgress * 100).toInt()
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Title and progress circle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = book.title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Progress circle
-                if (hasTotal) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "$progressPercent%",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Progress bar
-            if (hasTotal) {
-                LinearProgressIndicator(
-                    progress = { readingProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primaryContainer
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Pages read: $pagesRead of $totalPages",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Dates
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Started: ${book.startDate ?: "Not set"}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-
-                // Helper function to check if this book is truly completed
-                val isCompleted = !book.endDate.isNullOrBlank() && !book.endDate.contains("T00:00:00.000Z")
-
-                Text(
-                    text = if (isCompleted) "Finished: ${book.endDate}" else "In progress",
-                    fontSize = 12.sp,
-                    color = if (isCompleted)
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    else
-                        MaterialTheme.colorScheme.tertiary
-                )
-            }
-
-            // Notes preview
-            if (!book.notes.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "Notes: ${book.notes}",
-                        fontSize = 14.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
 // Modern 2025 book card component - Simplified version without animation dependencies
 @Composable
 fun EnhancedBookCard2025(book: Book) {
@@ -387,12 +254,14 @@ fun EnhancedBookCard2025(book: Book) {
     val startDateFormatted = try {
         book.startDate?.let {
             if (it.contains("T")) {
-                dateFormatter.format(SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(it))
+                val date = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).parse(it)
+                dateFormatter.format(date)
             } else {
-                dateFormatter.format(SimpleDateFormat("yyyy-MM-dd").parse(it))
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(it)
+                dateFormatter.format(date)
             }
         } ?: "Not set"
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         book.startDate ?: "Not set"
     }
 
@@ -402,15 +271,17 @@ fun EnhancedBookCard2025(book: Book) {
         if (isCompleted) {
             book.endDate?.let {
                 if (it.contains("T")) {
-                    dateFormatter.format(SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(it))
+                    val date = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).parse(it)
+                    dateFormatter.format(date)
                 } else {
-                    dateFormatter.format(SimpleDateFormat("yyyy-MM-dd").parse(it))
+                    val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(it)
+                    dateFormatter.format(date)
                 }
             } ?: "Not set"
         } else {
             "In progress"
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         book.endDate ?: "Not set"
     }
 
@@ -461,7 +332,7 @@ fun EnhancedBookCard2025(book: Book) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.MenuBook,
+                            imageVector = Icons.AutoMirrored.Outlined.MenuBook,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(24.dp)
@@ -572,7 +443,7 @@ fun EnhancedBookCard2025(book: Book) {
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
