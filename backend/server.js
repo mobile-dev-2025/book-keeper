@@ -86,8 +86,7 @@ app.post("/addBook", async (req, res) => {
     const collection = db.collection("books");
 
     // Extract book details from request body
-    const {  bookTitle, totalPages, userId, pagesRead,startDate, endDate, notes } =
-      req.body;
+    const { bookTitle, totalPages, userId, pagesRead, startDate, endDate, notes } = req.body;
 
     // Validate required fields
     if (!bookTitle || !totalPages || !userId) {
@@ -96,12 +95,34 @@ app.post("/addBook", async (req, res) => {
         .json({ error: "title, totalPages, and userId are required" });
     }
 
-    // Check for duplicate books for the same user (optional)
+    // Check for duplicate books for the same user
     const existingBook = await collection.findOne({ bookTitle, userId });
     if (existingBook) {
-      return res
-        .status(400)
-        .json({ error: "Book with this title already exists for this user" });
+      console.log("Book already exists, updating instead:", existingBook);
+      
+      // Update the existing book instead of creating a new one
+      const updatedBook = {
+        ...existingBook,
+        totalPages: totalPages,
+        pagesRead: pagesRead || existingBook.pagesRead || 0,
+        currentPage: pagesRead || existingBook.currentPage || 0,
+        startDate: startDate ? new Date(startDate) : existingBook.startDate,
+        endDate: endDate ? new Date(endDate) : existingBook.endDate,
+        notes: notes || existingBook.notes || "",
+        lastUpdated: new Date()
+      };
+      
+      await collection.updateOne(
+        { _id: existingBook._id },
+        { $set: updatedBook }
+      );
+      
+      console.log("Book updated successfully:", updatedBook);
+      
+      return res.json({
+        message: "Book updated successfully",
+        book: updatedBook,
+      });
     }
 
     // Create new book
@@ -110,15 +131,18 @@ app.post("/addBook", async (req, res) => {
       totalPages,
       userId,
       pagesRead: pagesRead || 0, // Ensure pagesRead defaults to 0 if not provided
-      currentPage:0,
+      currentPage: pagesRead || 0, // Set currentPage equal to pagesRead
       startDate: startDate ? new Date(startDate) : new Date(),
       endDate: endDate ? new Date(endDate) : null,
       notes: notes || "",
-       
-    
+      lastUpdated: new Date(),
+      createdAt: new Date()
     };
 
-    await collection.insertOne(newBook);
+    const result = await collection.insertOne(newBook);
+    newBook._id = result.insertedId;
+    
+    console.log("New book created:", newBook);
 
     res.json({
       message: "Book added successfully",
@@ -129,6 +153,7 @@ app.post("/addBook", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 // Fetching history of books read by the user from database
 app.get("/history", async (req, res) => {
@@ -200,7 +225,6 @@ app.put("/currentBook", async (req, res) => {
       const clientConnection = await clientPromise;
       const db = clientConnection.db("book-keeper");
       const collection = db.collection("books");
-      
   
       const { userId, bookTitle, currentPage, notes } = req.body;
   
@@ -208,48 +232,43 @@ app.put("/currentBook", async (req, res) => {
         return res.status(400).json({ error: "userId, bookTitle, and currentPage are required" });
       }
   
-      // Find the most recent book being read
+      // Find the current book being read
       const currentBook = await collection.findOne({ userId, bookTitle });
   
       if (!currentBook) {
-        return res.status(404).json({ message: "No current book found for this user" });
+        console.log("Book not found for update:", { userId, bookTitle });
+        return res.status(404).json({ message: "No book found for this user and title" });
       }
   
-      // Ensure currentPage is greater than or equal to lastPageRead (no going backward)
-      if (currentBook.lastPageRead !== null && currentPage < currentBook.lastPageRead) {
-        return res.status(400).json({ error: "currentPage cannot be less than the lastPageRead" });
+      console.log("Found book for update:", currentBook);
+  
+      // Ensure currentPage is not negative
+      if (currentPage < 0) {
+        return res.status(400).json({ error: "currentPage cannot be negative" });
       }
   
-      // Get the previous currentPage before updating (Default to 0 if first update)
-      const previousCurrentPage = currentBook.currentPage || 0;
-      
-       // Update lastPageRead correctly
-    const lastPageRead = previousCurrentPage;
-  
-      // Calculate pagesRead as the difference between currentPage and lastPageRead
-      const pagesRead = currentPage - lastPageRead;
-  
-      // Ensure pagesRead does not exceed totalPages
+      // Ensure currentPage does not exceed totalPages of the currentBook
       if (currentPage > currentBook.totalPages) {
         return res.status(400).json({ error: "currentPage cannot exceed totalPages" });
       }
   
-      // Prepare update fields
+      // Update book with new progress
       const updateFields = {
-        lastPageRead, // Store previous currentPage before updating
-        currentPage,  // Update to the new currentPage
-        pagesRead,    // Correct difference calculation
+        pagesRead: currentPage,
+        currentPage: currentPage,
+        lastUpdated: new Date()
       };
   
-      if (notes) updateFields.notes = notes;
-  
-      let responseMessage = "Current book updated successfully";
+      if (notes) {
+        updateFields.notes = notes;
+      }
   
       // If user reaches the last page, mark book as completed
       if (currentPage === currentBook.totalPages) {
-        updateFields.endDate = new Date(); // Set endDate
-        responseMessage = "Book completed";
+        updateFields.endDate = new Date();
       }
+  
+      console.log("Updating book with fields:", updateFields);
   
       // Update the book document
       await collection.updateOne(
@@ -257,8 +276,16 @@ app.put("/currentBook", async (req, res) => {
         { $set: updateFields }
       );
   
+      // Get the updated book to return in response
+      const updatedBook = await collection.findOne({ _id: currentBook._id });
+  
+      console.log("Book updated successfully:", updatedBook);
+  
       // Return the updated book details
-      res.json({ message: responseMessage, updatedBook: { ...currentBook, ...updateFields } });
+      res.json({
+        message: currentPage === currentBook.totalPages ? "Book completed" : "Book progress updated successfully",
+        updatedBook
+      });
     } catch (error) {
       console.error("Error updating current book:", error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -288,7 +315,10 @@ app.get("/readingPlans", async (req, res) => {
       const readingPlans = await collection.find(query).toArray();
   
       if (readingPlans.length === 0) {
-        return res.status(404).json({ message: bookTitle ? `No reading plans found for book "${bookTitle}"` : "No reading plans found for this user" });
+        return res.json({
+          message: bookTitle ? `No reading plans found for book "${bookTitle}"` : "No reading plans found for this user",
+          readingPlans: []
+        });
       }
   
       res.json({
@@ -300,6 +330,7 @@ app.get("/readingPlans", async (req, res) => {
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
+
 // Creating a new reading plan
 app.post("/readingPlans", async (req, res) => {
   try {
@@ -324,6 +355,50 @@ app.post("/readingPlans", async (req, res) => {
       return res.status(404).json({ error: "Book not found for this user" });
     }
 
+     console.log("Found book for reading plan:", book);
+
+    // Check if a reading plan already exists
+    const existingPlan = await readingPlansCollection.findOne({ bookTitle, userId });
+    if (existingPlan) {
+      console.log("Updating existing reading plan:", existingPlan);
+      
+      // Calculate the pages remaining
+      const pagesRemaining = book.totalPages - book.pagesRead;
+
+      // Dynamically calculate the estimated days to finish the book
+      let estimatedDays = Math.ceil(pagesRemaining / pagesPerDay); // rounding up to the nearest whole number
+
+      // Calculate end date based on estimatedDays
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + estimatedDays);
+      
+      // Update fields
+      const updateFields = {
+        pagesPerDay,
+        pagesRead: book.pagesRead,
+        totalPages: book.totalPages,
+        estimatedDays,
+        endDate,
+        updatedAt: new Date()
+      };
+      
+      // Update the reading plan
+      await readingPlansCollection.updateOne(
+        { _id: existingPlan._id },
+        { $set: updateFields }
+      );
+      
+      // Get the updated plan
+      const updatedPlan = await readingPlansCollection.findOne({ _id: existingPlan._id });
+      
+      console.log("Reading plan updated:", updatedPlan);
+      
+      return res.json({
+        message: "Reading plan updated successfully",
+        readingPlan: updatedPlan
+      });
+    }
+
     // Calculate the pages remaining
     const pagesRemaining = book.totalPages - book.pagesRead;
 
@@ -331,7 +406,8 @@ app.post("/readingPlans", async (req, res) => {
     let estimatedDays = Math.ceil(pagesRemaining / pagesPerDay); // rounding up to the nearest whole number
 
     // Calculate end date based on estimatedDays
-    const endDate = new Date(book.startDate.getTime() + estimatedDays * 24 * 60 * 60 * 1000);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + estimatedDays);
 
     // Create a new reading plan
     const newReadingPlan = {
@@ -340,14 +416,17 @@ app.post("/readingPlans", async (req, res) => {
       totalPages: book.totalPages,
       pagesRead: book.pagesRead || 0,
       pagesPerDay,
-      startDate: book.startDate,
+      startDate: new Date(),
       endDate,
       estimatedDays,
       createdAt: new Date(),
     };
 
     // Insert the new reading plan into the reading-plans collection
-    await readingPlansCollection.insertOne(newReadingPlan);
+    const result = await readingPlansCollection.insertOne(newReadingPlan);
+    newReadingPlan._id = result.insertedId;
+    
+    console.log("New reading plan created:", newReadingPlan);
 
     // Return success response
     res.json({
@@ -359,8 +438,6 @@ app.post("/readingPlans", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-// Updating the reading plan
 
 // Fetch the last read book and last read page from the user's reading history
 app.get("/lastRead", async (req, res) => {
