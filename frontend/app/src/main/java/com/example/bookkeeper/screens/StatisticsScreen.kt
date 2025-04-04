@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import com.example.bookkeeper.data.Book
 import com.example.bookkeeper.viewmodel.BookState
 import com.example.bookkeeper.viewmodel.BookViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -225,7 +227,7 @@ fun StatisticsScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "DAY",
+                                            text = "DATE",
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                             textAlign = TextAlign.Center,
@@ -271,7 +273,7 @@ fun StatisticsScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                             Text(
-                                                text = "${index + 1}",
+                                                text = data.date,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Center,
                                                 modifier = Modifier
@@ -510,24 +512,39 @@ fun ReadingProgressChart(
     }
 }
 
-// Data class for reading progress
+// Modified data class for reading progress with date field
 data class ReadingData(
     val day: Int,
+    val date: String, // Added date field for display
     val planned: Int,
     val actual: Int
 )
 
-// Function to generate sample reading data (in a real app, this would come from actual reading progress)
+// Function to generate sample reading data with dates
 fun generateSampleReadingData(book: Book): List<ReadingData> {
     // In a real app, you would fetch this data from the database
-    // For now, we'll generate some sample data
+    // For now, we'll generate some sample data with dates
+    val calendar = Calendar.getInstance()
+    val dateFormat = SimpleDateFormat("MM/dd/yy", Locale.getDefault())
 
-    val sampleData = listOf(
-        ReadingData(1, 10, 15),
-        ReadingData(2, 20, 30),
-        ReadingData(3, 30, 45),
-        ReadingData(4, 40, 60)
-    )
+    // Start from today and go back in time
+    calendar.add(Calendar.DAY_OF_MONTH, -3) // Set to 4 days ago
+
+    val sampleData = mutableListOf<ReadingData>()
+
+    for (i in 1..4) {
+        calendar.add(Calendar.DAY_OF_MONTH, 1) // Move forward one day
+        val dateString = dateFormat.format(calendar.time)
+
+        sampleData.add(
+            ReadingData(
+                day = i,
+                date = dateString,
+                planned = i * 10,
+                actual = i * 15
+            )
+        )
+    }
 
     return sampleData
 }
