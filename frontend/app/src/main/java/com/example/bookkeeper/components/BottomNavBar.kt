@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +40,11 @@ fun BottomNavBar(navController: NavController) {
             name = "History",
             route = "books",
             icon = Icons.AutoMirrored.Filled.MenuBook
+        ),
+        BottomNavItem(
+            name = "Stats",
+            route = "statistics",
+            icon = Icons.Filled.QueryStats
         )
     )
 
