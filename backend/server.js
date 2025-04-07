@@ -464,41 +464,7 @@ app.post("/readingPlans", async (req, res) => {
   }
 });
 
-// Fetch the last read book and last read page from the user's reading history
-app.get("/lastRead", async (req, res) => {
-  try {
-    const clientConnection = await clientPromise;
-    const db = clientConnection.db("book-keeper");
-    const collection = db.collection("books");
-
-    // Extract userId and bookTitle from query parameters
-    const { userId, bookTitle } = req.query;
-
-    if (!userId || !bookTitle) {
-      return res.status(400).json({ error: "userId and bookTitle are required" });
-    }
-
-    // Fetch the user's reading history sorted by last updated for the same book
-    const lastReadBook = await collection.findOne(
-      { userId, bookTitle },
-      { sort: { lastUpdated: -1 } }
-    );
-
-    if (!lastReadBook) {
-      return res.status(404).json({ message: "No reading history found for this book and user" });
-    }
-
-    res.json({
-      message: "Last read book retrieved successfully",
-      bookTitle: lastReadBook.bookTitle,
-      lastPageRead: lastReadBook.lastPageRead
-    });
-  } catch (error) {
-    console.error("Error fetching last read book:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
+// Fetching reading stats for a specific book
 app.get("/readingStats", async (req, res) => {
   try {
     const clientConnection = await clientPromise;
