@@ -519,9 +519,25 @@ app.get("/readingStats", async (req, res) => {
     if (!book || !plan) {
       return res.status(404).json({ error: "Book or reading plan not found" });
     }
-    const stats = {
+    const pagesPerDay = plan.pagesPerDay;
+    const dailyRead = book.dailyRead || [];
+
+   // Sort the reading data by date
+    dailyRead.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      
+       let cumulativeActual = 0;
+       const stats = dailyRead.map((entry, index) => {
+         cumulativeActual += entry.page; // total read so far
+         const cumulativePlan = pagesPerDay * (index + 1); // expected total so far
+         return {
+           date: entry.date,
+           plan: cumulativePlan,
+           actual: cumulativeActual,
+           bonus: cumulativeActual - cumulativePlan
+         };
+       });
    
-    };
     res.json({
       message: "Reading stats retrieved successfully",
       stats
