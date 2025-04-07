@@ -464,40 +464,57 @@ app.post("/readingPlans", async (req, res) => {
   }
 });
 
-// Fetch the last read book and last read page from the user's reading history
-app.get("/lastRead", async (req, res) => {
+// Fetching reading stats for a specific book
+app.get("/readingStats", async (req, res) => {
   try {
     const clientConnection = await clientPromise;
     const db = clientConnection.db("book-keeper");
-    const collection = db.collection("books");
 
-    // Extract userId and bookTitle from query parameters
     const { userId, bookTitle } = req.query;
 
     if (!userId || !bookTitle) {
       return res.status(400).json({ error: "userId and bookTitle are required" });
     }
-
-    // Fetch the user's reading history sorted by last updated for the same book
-    const lastReadBook = await collection.findOne(
-      { userId, bookTitle },
-      { sort: { lastUpdated: -1 } }
-    );
-
-    if (!lastReadBook) {
-      return res.status(404).json({ message: "No reading history found for this book and user" });
+    // Access collections for books and reading plans
+    const booksCollection = db.collection("books");
+    const plansCollection = db.collection("reading-plans");
+    // Find the book and its reading plan
+    const book = await booksCollection.findOne({ userId, bookTitle });
+    const plan = await plansCollection.findOne({ userId, bookTitle });
+    // If either the book or the plan doesn't exist, return a 404
+    if (!book || !plan) {
+      return res.status(404).json({ error: "Book or reading plan not found" });
     }
+    const pagesPerDay = plan.pagesPerDay;  // Expected pages to be read per day
+    const dailyRead = book.dailyRead || []; // Array of reading progress entries
 
+   // Sort the reading data by date
+    dailyRead.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      
+       let cumulativeActual = 0;
+       const stats = dailyRead.map((entry, index) => {
+         cumulativeActual += entry.page; // total read so far
+         const cumulativePlan = pagesPerDay * (index + 1); // expected total so far
+         return {
+           date: entry.date,
+           plan: cumulativePlan,   
+           actual: cumulativeActual,
+           bonus: cumulativeActual - cumulativePlan
+         };
+       });
+   
     res.json({
-      message: "Last read book retrieved successfully",
-      bookTitle: lastReadBook.bookTitle,
-      lastPageRead: lastReadBook.lastPageRead
+      message: "Reading stats retrieved successfully",
+      stats
     });
+
   } catch (error) {
-    console.error("Error fetching last read book:", error);
+    console.error("Error fetching reading stats:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 //marking the book as completed
 app.post('/finishedBook', async (req, res) => {
