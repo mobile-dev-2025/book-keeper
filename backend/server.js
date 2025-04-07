@@ -499,6 +499,41 @@ app.get("/lastRead", async (req, res) => {
   }
 });
 
+app.get("/readingStats", async (req, res) => {
+  try {
+    const clientConnection = await clientPromise;
+    const db = clientConnection.db("book-keeper");
+
+    const { userId, bookTitle } = req.query;
+
+    if (!userId || !bookTitle) {
+      return res.status(400).json({ error: "userId and bookTitle are required" });
+    }
+
+    const booksCollection = db.collection("books");
+    const plansCollection = db.collection("reading-plans");
+
+    const book = await booksCollection.findOne({ userId, bookTitle });
+    const plan = await plansCollection.findOne({ userId, bookTitle });
+
+    if (!book || !plan) {
+      return res.status(404).json({ error: "Book or reading plan not found" });
+    }
+    const stats = {
+   
+    };
+    res.json({
+      message: "Reading stats retrieved successfully",
+      stats
+    });
+
+  } catch (error) {
+    console.error("Error fetching reading stats:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
 //marking the book as completed
 app.post('/finishedBook', async (req, res) => {
   try {
