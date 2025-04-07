@@ -475,18 +475,18 @@ app.get("/readingStats", async (req, res) => {
     if (!userId || !bookTitle) {
       return res.status(400).json({ error: "userId and bookTitle are required" });
     }
-
+    // Access collections for books and reading plans
     const booksCollection = db.collection("books");
     const plansCollection = db.collection("reading-plans");
-
+    // Find the book and its reading plan
     const book = await booksCollection.findOne({ userId, bookTitle });
     const plan = await plansCollection.findOne({ userId, bookTitle });
-
+    // If either the book or the plan doesn't exist, return a 404
     if (!book || !plan) {
       return res.status(404).json({ error: "Book or reading plan not found" });
     }
-    const pagesPerDay = plan.pagesPerDay;
-    const dailyRead = book.dailyRead || [];
+    const pagesPerDay = plan.pagesPerDay;  // Expected pages to be read per day
+    const dailyRead = book.dailyRead || []; // Array of reading progress entries
 
    // Sort the reading data by date
     dailyRead.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -498,7 +498,7 @@ app.get("/readingStats", async (req, res) => {
          const cumulativePlan = pagesPerDay * (index + 1); // expected total so far
          return {
            date: entry.date,
-           plan: cumulativePlan,
+           plan: cumulativePlan,   
            actual: cumulativeActual,
            bonus: cumulativeActual - cumulativePlan
          };
