@@ -242,30 +242,53 @@ app.put("/currentBook", async (req, res) => {
   
       console.log("Found book for update:", currentBook);
   
-      // Ensure currentPage is not negative
+      // Ensure currentPage is valid
       if (currentPage < 0) {
         return res.status(400).json({ error: "currentPage cannot be negative" });
       }
-  
-      // Ensure currentPage does not exceed totalPages of the currentBook
       if (currentPage > currentBook.totalPages) {
         return res.status(400).json({ error: "currentPage cannot exceed totalPages" });
       }
   
-      // Update book with new progress
+      // Track previous last page read
+      const lastPageRead = currentBook.currentPage;
+  
+      // Calculate pages read today
+      const pagesReadToday = currentPage - lastPageRead;
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+  
+      // Initialize or get dailyRead array
+      let dailyRead = currentBook.dailyRead || [];
+  
+      if (pagesReadToday > 0) {
+        // Check if today's date already exists in dailyRead
+        const existingEntryIndex = dailyRead.findIndex(entry => entry.date === today);
+  
+        if (existingEntryIndex !== -1) {
+          // If today's entry exists, update page count
+          dailyRead[existingEntryIndex].page += pagesReadToday;
+        } else {
+          // If today's entry doesn't exist, add a new one
+          dailyRead.push({ date: today, page: pagesReadToday });
+        }
+      }
+  
+      // Update book progress
       const updateFields = {
-        pagesRead: currentPage,
-        currentPage: currentPage,
-        lastUpdated: new Date()
+        pagesRead: currentPage, // Track total pages read
+        currentPage,
+        lastUpdated: new Date().toISOString(),
+        lastPageRead,
+        dailyRead
       };
   
-      if (notes) {
+      if (notes !== undefined) {
         updateFields.notes = notes;
       }
   
-      // If user reaches the last page, mark book as completed
+      // If book is completed, set endDate
       if (currentPage === currentBook.totalPages) {
-        updateFields.endDate = new Date();
+        updateFields.endDate = new Date().toISOString();
       }
   
       console.log("Updating book with fields:", updateFields);
@@ -290,7 +313,9 @@ app.put("/currentBook", async (req, res) => {
       console.error("Error updating current book:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  });
+});
+ 
+  
     
 app.get("/readingPlans", async (req, res) => {
     try {
@@ -329,7 +354,7 @@ app.get("/readingPlans", async (req, res) => {
       console.error("Error fetching reading plans:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  });
+});
 
 // Creating a new reading plan
 app.post("/readingPlans", async (req, res) => {
@@ -439,40 +464,57 @@ app.post("/readingPlans", async (req, res) => {
   }
 });
 
-// Fetch the last read book and last read page from the user's reading history
-app.get("/lastRead", async (req, res) => {
+// Fetching reading stats for a specific book
+app.get("/readingStats", async (req, res) => {
   try {
     const clientConnection = await clientPromise;
     const db = clientConnection.db("book-keeper");
-    const collection = db.collection("books");
 
-    // Extract userId and bookTitle from query parameters
     const { userId, bookTitle } = req.query;
 
     if (!userId || !bookTitle) {
       return res.status(400).json({ error: "userId and bookTitle are required" });
     }
-
-    // Fetch the user's reading history sorted by last updated for the same book
-    const lastReadBook = await collection.findOne(
-      { userId, bookTitle },
-      { sort: { lastUpdated: -1 } }
-    );
-
-    if (!lastReadBook) {
-      return res.status(404).json({ message: "No reading history found for this book and user" });
+    // Access collections for books and reading plans
+    const booksCollection = db.collection("books");
+    const plansCollection = db.collection("reading-plans");
+    // Find the book and its reading plan
+    const book = await booksCollection.findOne({ userId, bookTitle });
+    const plan = await plansCollection.findOne({ userId, bookTitle });
+    // If either the book or the plan doesn't exist, return a 404
+    if (!book || !plan) {
+      return res.status(404).json({ error: "Book or reading plan not found" });
     }
+    const pagesPerDay = plan.pagesPerDay;  // Expected pages to be read per day
+    const dailyRead = book.dailyRead || []; // Array of reading progress entries
 
+   // Sort the reading data by date
+    dailyRead.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      
+       let cumulativeActual = 0;
+       const stats = dailyRead.map((entry, index) => {
+         cumulativeActual += entry.page; // total read so far
+         const cumulativePlan = pagesPerDay * (index + 1); // expected total so far
+         return {
+           date: entry.date,
+           plan: cumulativePlan,   
+           actual: cumulativeActual,
+           bonus: cumulativeActual - cumulativePlan
+         };
+       });
+   
     res.json({
-      message: "Last read book retrieved successfully",
-      bookTitle: lastReadBook.bookTitle,
-      lastPageRead: lastReadBook.lastPageRead
+      message: "Reading stats retrieved successfully",
+      stats
     });
+
   } catch (error) {
-    console.error("Error fetching last read book:", error);
+    console.error("Error fetching reading stats:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 //marking the book as completed
 app.post('/finishedBook', async (req, res) => {

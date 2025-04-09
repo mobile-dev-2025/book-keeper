@@ -75,7 +75,7 @@ fun BookKeeperApp() {
         }
     }
 
-    // Initialize BookViewModel with the current user ID - ADDED
+    // Initialize BookViewModel with the current user ID
     LaunchedEffect(authViewModel.getCurrentUser()) {
         authViewModel.getCurrentUser()?.let { user ->
             // Initialize BookViewModel with the user's ID
@@ -94,7 +94,7 @@ fun BookKeeperApp() {
     // Update drawer enabled status based on current route
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    isDrawerEnabled = currentRoute in listOf("home", "add_book", "books", "history", "profile", "settings", "about")
+    isDrawerEnabled = currentRoute in listOf("home", "add_book", "books", "history", "statistics", "profile", "settings", "about")
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -172,7 +172,7 @@ fun BookKeeperApp() {
                 composable("home") {
                     HomeScreen(
                         authViewModel = authViewModel,
-                        bookViewModel = bookViewModel, // Added bookViewModel parameter
+                        bookViewModel = bookViewModel,
                         onLogout = {
                             authViewModel.logout(navController.context)
                             navController.navigate("launch") {
@@ -219,7 +219,7 @@ fun BookKeeperApp() {
 
                 // History screen
                 composable("history") {
-                    BooksListScreen(  // Changed from PlaceholderScreen to BooksListScreen
+                    BooksListScreen(
                         bookViewModel = bookViewModel,
                         onMenuClick = {
                             scope.launch {
@@ -228,6 +228,18 @@ fun BookKeeperApp() {
                         },
                         onAddBookClick = {
                             navController.navigate("add_book")
+                        }
+                    )
+                }
+
+                // Statistics screen
+                composable("statistics") {
+                    StatisticsScreen(
+                        bookViewModel = bookViewModel,
+                        onMenuClick = {
+                            scope.launch {
+                                drawerState.open()
+                            }
                         }
                     )
                 }
