@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.outlined.Book
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
@@ -17,13 +18,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.bookkeeper.data.Book
+import com.example.bookkeeper.data.ReadingStats
 import com.example.bookkeeper.viewmodel.BookState
 import com.example.bookkeeper.viewmodel.BookViewModel
+import com.example.bookkeeper.viewmodel.ReadingStatsState
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,17 +37,29 @@ fun StatisticsScreen(
     onMenuClick: () -> Unit
 ) {
     val booksState by bookViewModel.booksState.collectAsState()
-    val readingPlansState by bookViewModel.readingPlansState.collectAsState()
+    val readingStatsState by bookViewModel.readingStatsState.collectAsState()
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // State for selected book
     var selectedBookIndex by remember { mutableStateOf(-1) }
     var expanded by remember { mutableStateOf(false) }
 
-    // Load books and reading plans when the screen is first displayed
+    // Load books when the screen is first displayed
     LaunchedEffect(Unit) {
         bookViewModel.loadBooks()
-        bookViewModel.loadReadingPlans()
+    }
+
+    // Trigger loading reading stats when book selection changes
+    LaunchedEffect(selectedBookIndex) {
+        if (selectedBookIndex >= 0) {
+            val books = (booksState as? BookState.Success)?.books ?: return@LaunchedEffect
+            if (books.isNotEmpty() && selectedBookIndex < books.size) {
+                val selectedBook = books[selectedBookIndex]
+                bookViewModel.loadReadingStats(selectedBook.title)
+            }
+        }
     }
 
     Scaffold(
@@ -61,7 +76,8 @@ fun StatisticsScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         when (booksState) {
             is BookState.Loading -> {
@@ -208,161 +224,276 @@ fun StatisticsScreen(
                         if (selectedBookIndex >= 0) {
                             val selectedBook = books[selectedBookIndex]
 
-                            // Generate sample reading progress data (in real app, this would come from actual data)
-                            val readingData = generateSampleReadingData(selectedBook)
-
-                            // Reading progress table
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp)
-                                ) {
-                                    // Table header
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                            // Stats content depends on reading stats state
+                            when (readingStatsState) {
+                                is ReadingStatsState.Loading -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = "DATE",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(vertical = 12.dp)
-                                        )
-                                        Text(
-                                            text = "PLAN",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(vertical = 12.dp)
-                                        )
-                                        Text(
-                                            text = "ACTUAL",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(vertical = 12.dp)
-                                        )
-                                        Text(
-                                            text = "BONUS",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(vertical = 12.dp)
-                                        )
+                                        CircularProgressIndicator()
                                     }
+                                }
 
-                                    HorizontalDivider()
-
-                                    // Table rows
-                                    readingData.forEachIndexed { index, data ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                is ReadingStatsState.Error -> {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                             Text(
-                                                text = data.date,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .padding(vertical = 12.dp)
+                                                text = "Error Loading Statistics",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
                                             )
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
                                             Text(
-                                                text = "${data.planned}",
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .padding(vertical = 12.dp)
+                                                text = (readingStatsState as ReadingStatsState.Error).message,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
                                             )
-                                            Text(
-                                                text = "${data.actual}",
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .padding(vertical = 12.dp)
-                                            )
-                                            Text(
-                                                text = "+${data.actual - data.planned}",
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .padding(vertical = 12.dp)
-                                            )
+
+                                            Spacer(modifier = Modifier.height(16.dp))
+
+                                            Button(
+                                                onClick = {
+                                                    bookViewModel.loadReadingStats(selectedBook.title)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                                                    contentColor = MaterialTheme.colorScheme.errorContainer
+                                                )
+                                            ) {
+                                                Icon(
+                                                    Icons.Outlined.Refresh,
+                                                    contentDescription = "Retry"
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Retry")
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // Reading progress legend
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Reading Plan legend
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFF8A055))
-                                )
-                                Text(
-                                    text = " Reading Plan",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                                is ReadingStatsState.Success -> {
+                                    val readingStats = (readingStatsState as ReadingStatsState.Success).stats
 
-                                Spacer(modifier = Modifier.width(24.dp))
+                                    if (readingStats.isEmpty()) {
+                                        // No stats available yet
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text(
+                                                    text = "No Reading Data Available",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
 
-                                // Actual Pages legend
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF4ECDC4))
-                                )
-                                Text(
-                                    text = " Actual Pages",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                                                Spacer(modifier = Modifier.height(8.dp))
 
-                            // Progress chart
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp)
-                                ) {
-                                    ReadingProgressChart(
-                                        readingData = readingData,
-                                        planColor = Color(0xFFF8A055),
-                                        actualColor = Color(0xFF4ECDC4)
-                                    )
+                                                Text(
+                                                    text = "Update your reading progress to see statistics",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        // Format dates for better display in table
+                                        val formattedStats = formatReadingStats(readingStats)
+
+                                        // Reading progress table
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surface
+                                            )
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp)
+                                            ) {
+                                                // Table header
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text(
+                                                        text = "DATE",
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                        textAlign = TextAlign.Center,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(vertical = 12.dp)
+                                                    )
+                                                    Text(
+                                                        text = "PLAN",
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                        textAlign = TextAlign.Center,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(vertical = 12.dp)
+                                                    )
+                                                    Text(
+                                                        text = "ACTUAL",
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                        textAlign = TextAlign.Center,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(vertical = 12.dp)
+                                                    )
+                                                    Text(
+                                                        text = "BONUS",
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                        textAlign = TextAlign.Center,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(vertical = 12.dp)
+                                                    )
+                                                }
+
+                                                HorizontalDivider()
+
+                                                // Table rows
+                                                formattedStats.forEach { stat ->
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        Text(
+                                                            text = stat.formattedDate,
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            textAlign = TextAlign.Center,
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .padding(vertical = 12.dp)
+                                                        )
+                                                        Text(
+                                                            text = "${stat.plan}",
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            textAlign = TextAlign.Center,
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .padding(vertical = 12.dp)
+                                                        )
+                                                        Text(
+                                                            text = "${stat.actual}",
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            textAlign = TextAlign.Center,
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .padding(vertical = 12.dp)
+                                                        )
+                                                        val bonusText = if (stat.bonus >= 0) "+${stat.bonus}" else "${stat.bonus}"
+                                                        val bonusColor = if (stat.bonus >= 0)
+                                                            MaterialTheme.colorScheme.primary
+                                                        else
+                                                            MaterialTheme.colorScheme.error
+                                                        Text(
+                                                            text = bonusText,
+                                                            color = bonusColor,
+                                                            textAlign = TextAlign.Center,
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .padding(vertical = 12.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Reading progress legend
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Reading Plan legend
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(12.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFFF8A055))
+                                            )
+                                            Text(
+                                                text = " Reading Plan",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+
+                                            Spacer(modifier = Modifier.width(24.dp))
+
+                                            // Actual Pages legend
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(12.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF4ECDC4))
+                                            )
+                                            Text(
+                                                text = " Actual Pages",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+
+                                        // Progress chart
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(200.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surface
+                                            )
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(16.dp)
+                                            ) {
+                                                ReadingProgressChart(
+                                                    readingStats = readingStats,
+                                                    planColor = Color(0xFFF8A055),
+                                                    actualColor = Color(0xFF4ECDC4)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                else -> {
+                                    // Idle state - empty content
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(100.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Select a book to view statistics",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
                                 }
                             }
                         } else {
@@ -422,15 +553,15 @@ fun StatisticsScreen(
 // Reading progress chart component
 @Composable
 fun ReadingProgressChart(
-    readingData: List<ReadingData>,
+    readingStats: List<ReadingStats>,
     planColor: Color,
     actualColor: Color
 ) {
     // Calculate the maximum value for scaling
-    val maxPlanned = readingData.maxOfOrNull { it.planned } ?: 1
-    val maxActual = readingData.maxOfOrNull { it.actual } ?: 1
+    val maxPlanned = readingStats.maxOfOrNull { it.plan } ?: 1
+    val maxActual = readingStats.maxOfOrNull { it.actual } ?: 1
     val maxValue = maxOf(maxPlanned, maxActual)
-    val dataPoints = readingData.size
+    val dataPoints = readingStats.size
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val width = size.width
@@ -458,14 +589,14 @@ fun ReadingProgressChart(
         // Draw data points and lines if we have more than one data point
         if (dataPoints > 1) {
             // Calculate point positions for planned progress
-            val plannedPoints = readingData.mapIndexed { index, data ->
+            val plannedPoints = readingStats.mapIndexed { index, data ->
                 val x = padding + index * (chartWidth / (dataPoints - 1))
-                val y = height - padding - (data.planned.toFloat() / maxValue) * chartHeight
+                val y = height - padding - (data.plan.toFloat() / maxValue) * chartHeight
                 Offset(x, y)
             }
 
             // Calculate point positions for actual progress
-            val actualPoints = readingData.mapIndexed { index, data ->
+            val actualPoints = readingStats.mapIndexed { index, data ->
                 val x = padding + index * (chartWidth / (dataPoints - 1))
                 val y = height - padding - (data.actual.toFloat() / maxValue) * chartHeight
                 Offset(x, y)
@@ -512,39 +643,37 @@ fun ReadingProgressChart(
     }
 }
 
-// Modified data class for reading progress with date field
-data class ReadingData(
-    val day: Int,
-    val date: String, // Added date field for display
-    val planned: Int,
-    val actual: Int
+// Data class for formatted reading stats
+data class FormattedReadingStats(
+    val formattedDate: String,
+    val plan: Int,
+    val actual: Int,
+    val bonus: Int
 )
 
-// Function to generate sample reading data with dates
-fun generateSampleReadingData(book: Book): List<ReadingData> {
-    // In a real app, you would fetch this data from the database
-    // For now, we'll generate some sample data with dates
-    val calendar = Calendar.getInstance()
-    val dateFormat = SimpleDateFormat("MM/dd/yy", Locale.getDefault())
+// Function to format reading stats dates
+fun formatReadingStats(stats: List<ReadingStats>): List<FormattedReadingStats> {
+    val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val outputFormat = SimpleDateFormat("MM/dd", Locale.getDefault())
 
-    // Start from today and go back in time
-    calendar.add(Calendar.DAY_OF_MONTH, -3) // Set to 4 days ago
-
-    val sampleData = mutableListOf<ReadingData>()
-
-    for (i in 1..4) {
-        calendar.add(Calendar.DAY_OF_MONTH, 1) // Move forward one day
-        val dateString = dateFormat.format(calendar.time)
-
-        sampleData.add(
-            ReadingData(
-                day = i,
-                date = dateString,
-                planned = i * 10,
-                actual = i * 15
+    return stats.map { stat ->
+        try {
+            val date = inputFormat.parse(stat.date)
+            val formattedDate = if (date != null) outputFormat.format(date) else stat.date
+            FormattedReadingStats(
+                formattedDate = formattedDate,
+                plan = stat.plan,
+                actual = stat.actual,
+                bonus = stat.bonus
             )
-        )
+        } catch (e: Exception) {
+            // If date parsing fails, keep the original date
+            FormattedReadingStats(
+                formattedDate = stat.date,
+                plan = stat.plan,
+                actual = stat.actual,
+                bonus = stat.bonus
+            )
+        }
     }
-
-    return sampleData
 }
