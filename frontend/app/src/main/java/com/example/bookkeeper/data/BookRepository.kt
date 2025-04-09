@@ -263,6 +263,41 @@ class BookRepository(private val userId: String? = null) {
         }
     }
 
+    /**
+     * Fetches reading statistics for a specific book
+     */
+    suspend fun getReadingStats(bookTitle: String, userId: String): Result<List<ReadingStats>> {
+        return try {
+            if (userId.isBlank() || bookTitle.isBlank()) {
+                Log.e(TAG, "Cannot get reading stats: userId or bookTitle is blank")
+                return Result.failure(Exception("User ID and Book Title are required"))
+            }
+
+            Log.d(TAG, "Fetching reading stats for book: $bookTitle")
+
+            val response = api.getReadingStats(userId, bookTitle)
+            Log.d(TAG, "Reading stats API response code: ${response.code()}")
+
+            if (response.isSuccessful) {
+                val statsResponse = response.body()
+                if (statsResponse != null) {
+                    Log.d(TAG, "Reading stats fetched successfully: ${statsResponse.stats.size} entries")
+                    Result.success(statsResponse.stats)
+                } else {
+                    Log.e(TAG, "Empty response when fetching reading stats")
+                    Result.failure(Exception("Empty response when fetching reading stats"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e(TAG, "Error fetching reading stats: ${response.code()} - $errorBody")
+                Result.failure(Exception("Failed to fetch reading stats: ${response.code()} - $errorBody"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception fetching reading stats", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun checkUser(userId: String): Result<UserCheckResponse> {
         return try {
             val request = UserCheckRequest(userId)

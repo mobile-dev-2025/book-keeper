@@ -120,6 +120,19 @@ data class FinishBookResponse(
     val book: Book
 )
 
+// Reading stats models
+data class ReadingStats(
+    val date: String,
+    val plan: Int,
+    val actual: Int,
+    val bonus: Int
+)
+
+data class ReadingStatsResponse(
+    val message: String,
+    val stats: List<ReadingStats>
+)
+
 // Updated API interface
 interface BookKeeperApi {
     // User check endpoint
@@ -147,12 +160,19 @@ interface BookKeeperApi {
     // Mark book as finished endpoint
     @POST("finishedBook")
     suspend fun markBookAsFinished(@Body request: FinishBookRequest): Response<FinishBookResponse>
+
+    // Reading stats endpoint
+    @GET("readingStats")
+    suspend fun getReadingStats(
+        @Query("userId") userId: String,
+        @Query("bookTitle") bookTitle: String
+    ): Response<ReadingStatsResponse>
 }
 
 // API service singleton
 object ApiService {
-    // Updated BASE_URL to localhost
-    private const val BASE_URL = "https://book-keeper-h3ha.onrender.com/" // Replace with your local server IP 
+    // Updated BASE_URL
+    private const val BASE_URL = "https://renderserver-1rkm.onrender.com" // Replace with your server URL if needed
 
     // Create logging interceptor for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
