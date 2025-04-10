@@ -1,6 +1,24 @@
 const supertest = require('supertest');
 const app = require('./server'); // Make sure this exports the Express `app`, not the server
 
+beforeAll(async () => {
+  const { MongoClient } = require('mongodb');
+  const client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: true });
+  await client.connect();
+  const db = client.db("book-keeper");
+  const collection = db.collection("books");
+
+  await collection.insertOne({
+    userId: 'test-user-id',
+    bookTitle: 'Test Book Title',
+    currentPage: 10,
+    totalPages: 100,
+    pagesRead: 10,
+    dailyRead: [],
+  });
+
+  await client.close();
+});
 
 describe('GET /currentBook', () => {
   it('should return current book if userId and bookTitle are passed', async () => {
