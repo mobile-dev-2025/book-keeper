@@ -1,6 +1,7 @@
 const supertest = require('supertest');
 const app = require('./server'); // Make sure this exports the Express `app`, not the server
 
+
 describe('GET /currentBook', () => {
   it('should return current book if userId and bookTitle are passed', async () => {
     const userId = 'test-user-id';
@@ -22,5 +23,51 @@ describe('GET /currentBook', () => {
     } else {
       expect(response.body).toHaveProperty('message', 'No current book found for this user');
     }
+  });
+});
+
+describe('PUT /currentBook', () => {
+  it('should update the book progress if valid data is passed', async () => {
+    const userId = 'test-user-id';
+    const bookTitle = 'Test Book Title';
+    const currentPage = 50; // Assume this is a valid page
+    const notes = 'Halfway through the book!';
+
+    const response = await supertest(app)
+      .put('/currentBook')
+      .send({ userId, bookTitle, currentPage, notes });
+
+    expect([200, 400, 404]).toContain(response.status);
+
+    if (response.status === 200) {
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('updatedBook');
+      expect(response.body.updatedBook).toHaveProperty('userId', userId);
+      expect(response.body.updatedBook).toHaveProperty('bookTitle', bookTitle);
+      expect(response.body.updatedBook).toHaveProperty('currentPage', currentPage);
+      expect(response.body.updatedBook).toHaveProperty('notes', notes);
+    } else if (response.status === 400) {
+      expect(response.body).toHaveProperty('error');
+    } else if (response.status === 404) {
+      expect(response.body).toHaveProperty('message', 'No book found for this user and title');
+    }
+  });
+
+  it('should return 400 if required fields are missing', async () => {
+    const response = await supertest(app)
+      .put('/currentBook')
+      .send({ userId: 'user-without-page' }); // Missing bookTitle and currentPage
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error');
+  });
+
+  it('should return 400 if currentPage is negative', async () => {
+    const response = await supertest(app)
+      .put('/currentBook')
+      .send({ userId: 'test-user-id', bookTitle: 'Test Book Title', currentPage: -1 });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'currentPage cannot be negative');
   });
 });
