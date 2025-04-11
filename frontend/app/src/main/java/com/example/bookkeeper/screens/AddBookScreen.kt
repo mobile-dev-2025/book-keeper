@@ -602,7 +602,7 @@ fun AddBookScreen(
                 maxLines = 5
             )
 
-            // Add Book Button
+            // Add Book Button with WHITE background and BLACK text
             ElevatedButton(
                 onClick = {
                     try {
@@ -688,22 +688,24 @@ fun AddBookScreen(
                     .padding(vertical = 8.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.elevatedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = Color.White,
+                    contentColor = Color.Black
                 ),
                 enabled = addBookState !is AddBookState.Loading
             ) {
                 if (addBookState is AddBookState.Loading) {
                     CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color.Black,
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
                     Icon(
                         Icons.Rounded.AddCircle,
                         contentDescription = "Add",
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.padding(end = 8.dp),
+                        tint = Color.Black
                     )
-                    Text("Add to Library", fontSize = 16.sp)
+                    Text("Add to Library", fontSize = 16.sp, color = Color.Black)
                 }
             }
 

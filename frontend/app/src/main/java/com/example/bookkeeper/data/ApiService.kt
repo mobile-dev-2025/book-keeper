@@ -10,7 +10,6 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
-import retrofit2.http.Path
 import retrofit2.http.Query
 
 // Data classes for Book
@@ -172,7 +171,7 @@ interface BookKeeperApi {
 // API service singleton
 object ApiService {
     // Updated BASE_URL
-    private const val BASE_URL = "https://renderserver-1rkm.onrender.com" // Replace with your server URL if needed
+    private const val BASE_URL = "https://book-keeper-h3ha.onrender.com/" // Replace with your server URL if needed
 
     // Create logging interceptor for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

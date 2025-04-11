@@ -196,15 +196,17 @@ fun BooksList(books: List<Book>, paddingValues: PaddingValues) {
                     .padding(bottom = 8.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
+                ),
+                shape = RoundedCornerShape(24.dp),
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
                         text = "Reading Summary",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -236,7 +238,7 @@ fun BooksList(books: List<Book>, paddingValues: PaddingValues) {
     }
 }
 
-// Modern 2025 book card component - Simplified version without animation dependencies
+// Modern 2025 book card component with improved UI
 @Composable
 fun EnhancedBookCard2025(book: Book) {
     // Safe unwrapping of nullable integers with defaults
@@ -310,7 +312,7 @@ fun EnhancedBookCard2025(book: Book) {
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             // Header with title and progress
             Row(
@@ -326,8 +328,8 @@ fun EnhancedBookCard2025(book: Book) {
                     // Book icon with background
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
@@ -335,18 +337,19 @@ fun EnhancedBookCard2025(book: Book) {
                             imageVector = Icons.AutoMirrored.Outlined.MenuBook,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(26.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
 
                     // Title text
                     Text(
                         text = book.title,
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
@@ -355,8 +358,8 @@ fun EnhancedBookCard2025(book: Book) {
                     Box(contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(
                             progress = { readingProgress },
-                            modifier = Modifier.size(58.dp),
-                            strokeWidth = 5.dp,
+                            modifier = Modifier.size(62.dp),
+                            strokeWidth = 6.dp,
                             color = progressColor,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -371,7 +374,7 @@ fun EnhancedBookCard2025(book: Book) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Progress linear indicator with modern rounded edges
             if (hasTotal) {
@@ -383,8 +386,8 @@ fun EnhancedBookCard2025(book: Book) {
                         progress = { readingProgress },
                         modifier = Modifier
                             .weight(1f)
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(6.dp)),
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(7.dp)),
                         color = progressColor,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -453,41 +456,42 @@ fun EnhancedBookCard2025(book: Book) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp),
+                            .padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             text = "Notes: ${book.notes}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier.padding(12.dp)
                         )
                     }
                 }
 
-                // Action buttons
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Button(
-                        onClick = { /* Update pages */ },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        modifier = Modifier.padding(end = 8.dp)
+                // Action button - only "Mark as Read" now
+                if (!isCompleted) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Update Progress")
-                    }
-
-                    if (!isCompleted) {
-                        OutlinedButton(
-                            onClick = { /* Mark as finished */ }
+                        Button(
+                            onClick = { /* Mark as finished */ },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(48.dp)
                         ) {
-                            Text("Mark as Finished")
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Mark as Read", fontSize = 16.sp)
                         }
                     }
                 }
@@ -550,7 +554,8 @@ fun ErrorView(message: String, onRetry: () -> Unit, paddingValues: PaddingValues
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
-                )
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Try Again")
             }
