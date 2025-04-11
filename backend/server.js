@@ -2,9 +2,7 @@
 const express = require("express");
 const app = express();
 const port = 8000;
-
-// Load environment variables from .env file
-require("dotenv").config();
+require("dotenv").config();// Load environment variables from .env file
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -564,3 +562,4 @@ app.listen(port, (err) => {
     console.log(`Server is running on port: ${port}`);
   }
 });
+module.exports = app; // Export the app for testing purposes
