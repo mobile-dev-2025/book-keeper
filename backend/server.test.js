@@ -149,3 +149,54 @@ describe('POST /checkUser', () => {
     expect(response.body).toHaveProperty('error', 'userId is required');
   });
 });
+
+// Test POST /addBook
+describe('POST /addBook', () => {
+  it('should add a new book if it does not exist', async () => {
+    await booksCollection.deleteMany({ userId: testUserId, bookTitle: 'New Test Book' });
+
+    const response = await supertest(app)
+      .post('/addBook')
+      .send({
+        userId: testUserId,
+        bookTitle: 'New Test Book',
+        totalPages: 200,
+        pagesRead: 20,
+        notes: 'Starting the book',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Book added successfully');
+    expect(response.body.book).toHaveProperty('bookTitle', 'New Test Book');
+  });
+
+  it('should update an existing book with new data', async () => {
+    const response = await supertest(app)
+      .post('/addBook')
+      .send({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        totalPages: 300,
+        pagesRead: 100,
+        notes: 'Updated note',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Book updated successfully');
+    expect(response.body.book).toMatchObject({
+      bookTitle: testBookTitle,
+      userId: testUserId,
+      pagesRead: 100,
+      notes: 'Updated note',
+    });
+  });
+
+  it('should return 400 if required fields are missing', async () => {
+    const response = await supertest(app)
+      .post('/addBook')
+      .send({ userId: testUserId });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error');
+  });
+});
