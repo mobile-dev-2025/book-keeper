@@ -256,5 +256,32 @@ describe('GET /history', () => {
     expect(response.body).toHaveProperty('error', 'userId is required');
   });
 });
+describe('GET /readingPlans', () => {
+  const testUserId = 'test-reading-plans-user';
+  const testBookTitle = 'Test Reading Book';
 
+  beforeAll(async () => {
+    await db.collection('reading-plans').deleteMany({ userId: testUserId });
 
+    await db.collection('reading-plans').insertMany([
+      {
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        dailyGoal: 15,
+        startDate: new Date(),
+      },
+      {
+        userId: testUserId,
+        bookTitle: 'Another Book',
+        dailyGoal: 10,
+        startDate: new Date(),
+      },
+    ]);
+  });
+
+  afterAll(async () => {
+    await db.collection('reading-plans').deleteMany({ userId: testUserId });
+  });
+})
+
+ 
