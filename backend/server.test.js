@@ -200,3 +200,33 @@ describe('POST /addBook', () => {
     expect(response.body).toHaveProperty('error');
   });
 });
+// to test the get history endpoint
+describe('GET /history', () => {
+  beforeAll(async () => {
+    // Insert multiple mock books for history
+    await booksCollection.insertMany([
+      {
+        userId: testUserId,
+        bookTitle: 'History Book 1',
+        totalPages: 150,
+        pagesRead: 150,
+        currentPage: 150,
+        notes: 'Finished reading',
+        dailyRead: [],
+        createdAt: new Date(),
+        lastUpdated: new Date()
+      },
+      {
+        userId: testUserId,
+        bookTitle: 'History Book 2',
+        totalPages: 200,
+        pagesRead: 100,
+        currentPage: 100,
+        notes: 'Halfway there',
+        dailyRead: [],
+        createdAt: new Date(),
+        lastUpdated: new Date()
+      }
+    ]);
+  });
+
