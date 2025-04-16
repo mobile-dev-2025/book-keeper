@@ -282,6 +282,50 @@ describe('GET /readingPlans', () => {
   afterAll(async () => {
     await db.collection('reading-plans').deleteMany({ userId: testUserId });
   });
-})
+  it('should return reading plans for a valid userId', async () => {
+    const response = await supertest(app)
+      .get('/readingPlans')
+      .query({ userId: testUserId });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Reading plans retrieved successfully');
+    expect(Array.isArray(response.body.readingPlans)).toBe(true);
+    expect(response.body.readingPlans.length).toBeGreaterThanOrEqual(1);
+    expect(response.body.readingPlans[0]).toHaveProperty('userId', testUserId);
+  });
+
+  it('should return filtered reading plans when bookTitle is provided', async () => {
+    const response = await supertest(app)
+      .get('/readingPlans')
+      .query({ userId: testUserId, bookTitle: testBookTitle });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', `Reading plans for "${testBookTitle}" retrieved successfully`);
+    expect(Array.isArray(response.body.readingPlans)).toBe(true);
+    expect(response.body.readingPlans.length).toBe(1);
+    expect(response.body.readingPlans[0]).toMatchObject({
+      userId: testUserId,
+      bookTitle: testBookTitle,
+    });
+  });
+
+  it('should return 400 if userId is missing', async () => {
+    const response = await supertest(app).get('/readingPlans');
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'userId is required');
+  });
+
+  it('should return empty array if no plans match bookTitle', async () => {
+    const response = await supertest(app)
+      .get('/readingPlans')
+      .query({ userId: testUserId, bookTitle: 'Nonexistent Book' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'No reading plans found for book "Nonexistent Book"');
+    expect(Array.isArray(response.body.readingPlans)).toBe(true);
+    expect(response.body.readingPlans.length).toBe(0);
+  });
+});
+
 
  
