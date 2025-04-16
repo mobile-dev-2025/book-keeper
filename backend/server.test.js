@@ -229,4 +229,32 @@ describe('GET /history', () => {
       }
     ]);
   });
+  it('should return reading history for a valid userId', async () => {
+    const response = await supertest(app)
+      .get('/history')
+      .query({ userId: testUserId });
+  //test if the response is correct
+    expect(response.status).toBe(200);
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'User reading history retrieved successfully');
+    expect(Array.isArray(response.body.books)).toBe(true);
+    expect(response.body.books.length).toBeGreaterThanOrEqual(2);
+
+    //test if the books belong to the test user
+    response.body.books.forEach(book => {
+      expect(book).toHaveProperty('userId', testUserId);
+      expect(book).toHaveProperty('bookTitle');
+      expect(book).toHaveProperty('totalPages');
+    });
+  });
+  // Test for no history found
+  it('should return 400 if userId is missing', async () => {
+    const response = await supertest(app)
+      .get('/history');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'userId is required');
+  });
+});
+
 
