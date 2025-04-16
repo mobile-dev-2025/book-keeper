@@ -326,6 +326,85 @@ describe('GET /readingPlans', () => {
     expect(response.body.readingPlans.length).toBe(0);
   });
 });
+describe('POST /readingPlans', () => {
+  const testUserId = 'reading-plan-user';
+  const testBookTitle = 'Reading Plan Book';
+
+  beforeAll(async () => {
+    // Clean state
+    await db.collection('books').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+    await db.collection('reading-plans').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+
+    // Add test book
+    await db.collection('books').insertOne({
+      userId: testUserId,
+      bookTitle: testBookTitle,
+      totalPages: 120,
+      pagesRead: 20,
+    });
+  });
+
+  afterAll(async () => {
+    // Cleanup
+    await db.collection('books').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+    await db.collection('reading-plans').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+  });
+
+  it('should create a new reading plan if none exists', async () => {
+    const response = await supertest(app)
+      .post('/readingPlans')
+      .send({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        pagesPerDay: 10,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Reading plan created successfully');
+    expect(response.body.readingPlan).toHaveProperty('userId', testUserId);
+    expect(response.body.readingPlan).toHaveProperty('bookTitle', testBookTitle);
+    expect(response.body.readingPlan).toHaveProperty('pagesPerDay', 10);
+    expect(response.body.readingPlan).toHaveProperty('estimatedDays');
+  });
+
+  it('should update the existing reading plan instead of creating a new one', async () => {
+    const response = await supertest(app)
+      .post('/readingPlans')
+      .send({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        pagesPerDay: 15,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Reading plan updated successfully');
+    expect(response.body.readingPlan).toHaveProperty('pagesPerDay', 15);
+    expect(response.body.readingPlan).toHaveProperty('updatedAt');
+  });
+
+  it('should return 400 if required fields are missing', async () => {
+    const response = await supertest(app)
+      .post('/readingPlans')
+      .send({ userId: testUserId }); // Missing bookTitle and pagesPerDay
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'userId, bookTitle, and pagesPerDay are required');
+  });
+
+  it('should return 404 if the book is not found for the user', async () => {
+    const response = await supertest(app)
+      .post('/readingPlans')
+      .send({
+        userId: testUserId,
+        bookTitle: 'Nonexistent Book',
+        pagesPerDay: 10,
+      });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty('error', 'Book not found for this user');
+  });
+});
+
 
 
  
