@@ -1,103 +1,202 @@
 const supertest = require('supertest');
-const app = require('./server'); // Make sure this exports the Express `app`, not the server
+const app = require('./server'); // Export only the Express `app` from your server file
+const { MongoClient } = require('mongodb');
 
-// Setup before running any tests: Insert a test book into the database
+const testUserId = 'test-user-id';
+const testBookTitle = 'Test Book Title';
+
+let client;
+let db;
+let usersCollection;
+let booksCollection;
+
 beforeAll(async () => {
-  const { MongoClient } = require('mongodb');
-  const client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: true });
-  // Connect to the MongoDB database
+  client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: true });
   await client.connect();
-  const db = client.db("book-keeper");
-  const collection = db.collection("books");
-  // Insert a mock book to use for testing the endpoints
-  await collection.insertOne({
-    userId: 'test-user-id',
-    bookTitle: 'Test Book Title',
+  db = client.db('book-keeper');
+  usersCollection = db.collection('users');
+  booksCollection = db.collection('books');
+
+  // Ensure clean state
+  await usersCollection.deleteMany({ userId: testUserId });
+  await booksCollection.deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+
+  // Insert mock book
+  await booksCollection.insertOne({
+    userId: testUserId,
+    bookTitle: testBookTitle,
     currentPage: 10,
     totalPages: 100,
     pagesRead: 10,
     dailyRead: [],
   });
- // Close the database connection after the setup
+});
+
+afterAll(async () => {
+  // Cleanup after tests
+  await usersCollection.deleteMany({ userId: testUserId });
+  await booksCollection.deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+
   await client.close();
 });
 
-// Test suite for the GET /currentBook endpoint
+// Test GET /currentBook
 describe('GET /currentBook', () => {
   it('should return current book if userId and bookTitle are passed', async () => {
-    const userId = 'test-user-id';
-    const bookTitle = 'Test Book Title';
-    // Send a GET request to fetch the current book
     const response = await supertest(app)
       .get('/currentBook')
-      .query({ userId, bookTitle });
+      .query({ userId: testUserId, bookTitle: testBookTitle });
 
-    expect([200, 400]).toContain(response.status); // 400 if user/book not found, or 200 if found
-    // If the book is found (status 200), check that the response contains the book details
+    expect([200, 400]).toContain(response.status);
     if (response.status === 200 && response.body.currentBook) {
       expect(response.body).toHaveProperty('message', 'Current book retrieved successfully');
-      expect(response.body).toHaveProperty('currentBook');
-      expect(response.body.currentBook).toHaveProperty('userId', userId);
-      expect(response.body.currentBook).toHaveProperty('bookTitle', bookTitle);
+      expect(response.body.currentBook).toMatchObject({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+      });
     } else if (response.status === 400) {
-       // If no book is found (status 400), check that the error message is in the response
       expect(response.body).toHaveProperty('error');
     } else {
-      // If no current book found (status other than 200 or 400), check the message
       expect(response.body).toHaveProperty('message', 'No current book found for this user');
     }
   });
 });
 
+// Test PUT /currentBook
 describe('PUT /currentBook', () => {
   it('should update the book progress if valid data is passed', async () => {
-    const userId = 'test-user-id';
-    const bookTitle = 'Test Book Title';
-    const currentPage = 50; 
-    const notes = 'Halfway through the book!';
- 
-    // Send a PUT request to update the book progress
     const response = await supertest(app)
       .put('/currentBook')
-      .send({ userId, bookTitle, currentPage, notes });
-    // Check that the response status is either 200, 400, or 404
+      .send({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        currentPage: 50,
+        notes: 'Halfway through the book!',
+      });
+
     expect([200, 400, 404]).toContain(response.status);
-    // If the update is successful (status 200), check the response contains the updated book details
+
     if (response.status === 200) {
       expect(response.body).toHaveProperty('message');
-      expect(response.body).toHaveProperty('updatedBook');
-      expect(response.body.updatedBook).toHaveProperty('userId', userId);
-      expect(response.body.updatedBook).toHaveProperty('bookTitle', bookTitle);
-      expect(response.body.updatedBook).toHaveProperty('currentPage', currentPage);
-      expect(response.body.updatedBook).toHaveProperty('notes', notes);
+      expect(response.body.updatedBook).toMatchObject({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        currentPage: 50,
+        notes: 'Halfway through the book!',
+      });
     } else if (response.status === 400) {
-      // If there is an error (status 400), check that the error message is in the response
       expect(response.body).toHaveProperty('error');
     } else if (response.status === 404) {
-       // If no book was found to update (status 404), check the error message
       expect(response.body).toHaveProperty('message', 'No book found for this user and title');
     }
   });
 
-   // Test for missing required fields in the PUT request body
   it('should return 400 if required fields are missing', async () => {
-    // Send a PUT request with a missing bookTitle and currentPage
     const response = await supertest(app)
       .put('/currentBook')
-      .send({ userId: 'user-without-page' }); 
-    // Check that the response status is 400 for invalid data
+      .send({ userId: 'user-without-page' });
+
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error');
   });
 
-   // Test for invalid currentPage value (negative page number)
   it('should return 400 if currentPage is negative', async () => {
-    // Send a PUT request with a negative currentPage
     const response = await supertest(app)
       .put('/currentBook')
-      .send({ userId: 'test-user-id', bookTitle: 'Test Book Title', currentPage: -1 });
-    // Check that the response status is 400 for invalid currentPage
+      .send({ userId: testUserId, bookTitle: testBookTitle, currentPage: -1 });
+
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error', 'currentPage cannot be negative');
+  });
+});
+
+// Test POST /checkUser
+describe('POST /checkUser', () => {
+  it('should create a new user if one does not exist', async () => {
+    await usersCollection.deleteMany({ userId: testUserId }); // Force fresh start
+
+    const response = await supertest(app)
+      .post('/checkUser')
+      .send({ userId: testUserId });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      userId: testUserId,
+      isNewUser: true,
+    });
+
+    const user = await usersCollection.findOne({ userId: testUserId });
+    expect(user).toBeTruthy();
+    expect(user).toHaveProperty('createdAt');
+    expect(user).toHaveProperty('lastLogin');
+  });
+
+  it('should update lastLogin and return isNewUser: false if user already exists', async () => {
+    const response = await supertest(app)
+      .post('/checkUser')
+      .send({ userId: testUserId });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      userId: testUserId,
+      isNewUser: false,
+    });
+  });
+
+  it('should return 400 if userId is missing', async () => {
+    const response = await supertest(app).post('/checkUser').send({});
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'userId is required');
+  });
+});
+
+// Test POST /addBook
+describe('POST /addBook', () => {
+  it('should add a new book if it does not exist', async () => {
+    await booksCollection.deleteMany({ userId: testUserId, bookTitle: 'New Test Book' });
+
+    const response = await supertest(app)
+      .post('/addBook')
+      .send({
+        userId: testUserId,
+        bookTitle: 'New Test Book',
+        totalPages: 200,
+        pagesRead: 20,
+        notes: 'Starting the book',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Book added successfully');
+    expect(response.body.book).toHaveProperty('bookTitle', 'New Test Book');
+  });
+
+  it('should update an existing book with new data', async () => {
+    const response = await supertest(app)
+      .post('/addBook')
+      .send({
+        userId: testUserId,
+        bookTitle: testBookTitle,
+        totalPages: 300,
+        pagesRead: 100,
+        notes: 'Updated note',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Book updated successfully');
+    expect(response.body.book).toMatchObject({
+      bookTitle: testBookTitle,
+      userId: testUserId,
+      pagesRead: 100,
+      notes: 'Updated note',
+    });
+  });
+
+  it('should return 400 if required fields are missing', async () => {
+    const response = await supertest(app)
+      .post('/addBook')
+      .send({ userId: testUserId });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error');
   });
 });
