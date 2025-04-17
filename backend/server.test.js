@@ -404,6 +404,79 @@ describe('POST /readingPlans', () => {
     expect(response.body).toHaveProperty('error', 'Book not found for this user');
   });
 });
+describe('GET /readingStats', () => {
+  const testUserId = 'reading-stats-user';
+  const testBookTitle = 'Stats Book';
+
+  beforeAll(async () => {
+    // Clean previous data
+    await db.collection('books').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+    await db.collection('reading-plans').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+
+    // Insert a book with reading progress
+    await db.collection('books').insertOne({
+      userId: testUserId,
+      bookTitle: testBookTitle,
+      totalPages: 200,
+      pagesRead: 60,
+      dailyRead: [
+        { date: '2024-01-01', page: 10 },
+        { date: '2024-01-02', page: 20 },
+        { date: '2024-01-03', page: 30 },
+      ]
+    });
+
+    // Insert corresponding reading plan
+    await db.collection('reading-plans').insertOne({
+      userId: testUserId,
+      bookTitle: testBookTitle,
+      pagesPerDay: 20,
+      totalPages: 200,
+      pagesRead: 60,
+    });
+  });
+
+  afterAll(async () => {
+    await db.collection('books').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+    await db.collection('reading-plans').deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+  });
+
+  it('should return reading stats if book and plan exist', async () => {
+    const response = await supertest(app)
+      .get('/readingStats')
+      .query({ userId: testUserId, bookTitle: testBookTitle });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Reading stats retrieved successfully');
+    expect(Array.isArray(response.body.stats)).toBe(true);
+    expect(response.body.stats.length).toBe(3);
+    expect(response.body.stats[0]).toMatchObject({
+      date: '2024-01-01',
+      plan: 20,
+      actual: 10,
+      bonus: -10
+    });
+    expect(response.body.stats[2].actual).toBe(60);
+  });
+
+  it('should return 400 if required query parameters are missing', async () => {
+    const response = await supertest(app)
+      .get('/readingStats')
+      .query({ userId: testUserId }); // missing bookTitle
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'userId and bookTitle are required');
+  });
+
+  it('should return 404 if book or reading plan not found', async () => {
+    const response = await supertest(app)
+      .get('/readingStats')
+      .query({ userId: 'nonexistent-user', bookTitle: 'nonexistent-book' });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty('error', 'Book or reading plan not found');
+  });
+});
 
 
 
