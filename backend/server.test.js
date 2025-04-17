@@ -477,6 +477,52 @@ describe('GET /readingStats', () => {
     expect(response.body).toHaveProperty('error', 'Book or reading plan not found');
   });
 });
+describe('POST /finishedBook', () => {
+  const testUserId = 'finished-book-user';
+  const testBookTitle = 'Finished Book Title';
+
+  beforeAll(async () => {
+    await booksCollection.deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+
+    await booksCollection.insertOne({
+      userId: testUserId,
+      bookTitle: testBookTitle,
+      currentPage: 80,
+      totalPages: 100,
+      pagesRead: 80,
+      dailyRead: []
+    });
+  });
+
+  afterAll(async () => {
+    await booksCollection.deleteMany({ userId: testUserId, bookTitle: testBookTitle });
+  });
+
+  it('should mark the book as completed successfully', async () => {
+    const response = await supertest(app)
+      .post('/finishedBook')
+      .send({ userId: testUserId, bookTitle: testBookTitle });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Book marked as completed successfully');
+    expect(response.body.book).toMatchObject({
+      userId: testUserId,
+      bookTitle: testBookTitle,
+      currentPage: 100,
+      pagesRead: 100
+    });
+    expect(new Date(response.body.book.endDate)).toBeInstanceOf(Date);
+  });
+
+  it('should return 404 if the book is not found', async () => {
+    const response = await supertest(app)
+      .post('/finishedBook')
+      .send({ userId: 'nonexistent-user', bookTitle: 'nonexistent-book' });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty('error', 'Book not found');
+  });
+});
 
 
 
