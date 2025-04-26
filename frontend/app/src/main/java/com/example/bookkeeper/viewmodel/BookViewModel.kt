@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.bookkeeper.data.Book
 import com.example.bookkeeper.data.BookRepository
 import com.example.bookkeeper.data.ReadingPlan
+import com.example.bookkeeper.data.ReadingStats
 import com.example.bookkeeper.data.ApiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,6 +59,13 @@ sealed class UpdateBookState {
     data class Error(val message: String) : UpdateBookState()
 }
 
+sealed class ReadingStatsState {
+    object Idle : ReadingStatsState()
+    object Loading : ReadingStatsState()
+    data class Success(val stats: List<ReadingStats>) : ReadingStatsState()
+    data class Error(val message: String) : ReadingStatsState()
+}
+
 class BookViewModel : ViewModel() {
     private val TAG = "BookViewModel"
     private var repository: BookRepository? = null
@@ -84,6 +92,10 @@ class BookViewModel : ViewModel() {
     // Update book state
     private val _updateBookState = MutableStateFlow<UpdateBookState>(UpdateBookState.Idle)
     val updateBookState: StateFlow<UpdateBookState> = _updateBookState.asStateFlow()
+
+    // Reading stats state
+    private val _readingStatsState = MutableStateFlow<ReadingStatsState>(ReadingStatsState.Idle)
+    val readingStatsState: StateFlow<ReadingStatsState> = _readingStatsState.asStateFlow()
 
     // Initialize repository with user ID
     fun initializeWithUser(userId: String) {
@@ -138,6 +150,31 @@ class BookViewModel : ViewModel() {
                 Log.e(TAG, "Error loading reading plans", e)
                 _readingPlansState.value = ReadingPlansState.Error(e.message ?: "Error loading reading plans")
             }
+        }
+    }
+
+    // Function to load reading stats for a specific book
+    fun loadReadingStats(bookTitle: String) {
+        if (repository == null || currentUserId == null) {
+            _readingStatsState.value = ReadingStatsState.Error("User not initialized")
+            return
+        }
+
+        viewModelScope.launch {
+            _readingStatsState.value = ReadingStatsState.Loading
+            Log.d(TAG, "Loading reading stats for book: $bookTitle")
+
+            val result = repository!!.getReadingStats(bookTitle, currentUserId!!)
+            _readingStatsState.value = result.fold(
+                onSuccess = {
+                    Log.d(TAG, "Reading stats loaded successfully: ${it.size} entries")
+                    ReadingStatsState.Success(it)
+                },
+                onFailure = {
+                    Log.e(TAG, "Failed to load reading stats: ${it.message}")
+                    ReadingStatsState.Error(it.message ?: "Failed to load reading stats")
+                }
+            )
         }
     }
 
@@ -479,7 +516,7 @@ class BookViewModel : ViewModel() {
         }
     }
 
-    // Reset states
+
     fun resetAddBookState() {
         _addBookState.value = AddBookState.Idle
     }
@@ -502,5 +539,9 @@ class BookViewModel : ViewModel() {
 
     fun resetUpdateBookState() {
         _updateBookState.value = UpdateBookState.Idle
+    }
+
+    fun resetReadingStatsState() {
+        _readingStatsState.value = ReadingStatsState.Idle
     }
 }

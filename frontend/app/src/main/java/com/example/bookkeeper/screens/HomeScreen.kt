@@ -612,11 +612,14 @@ fun HomeScreen(
                                     onClick = {
                                         val currentPageInt = currentPage.toIntOrNull() ?: 0
                                         val totalPages = selectedBook.totalPages ?: 0
+                                        val currentPagesRead = selectedBook.pagesRead ?: 0
 
                                         if (currentPageInt <= 0) {
                                             Toast.makeText(context, "Please enter a valid page number", Toast.LENGTH_SHORT).show()
                                         } else if (currentPageInt > totalPages) {
                                             Toast.makeText(context, "Page number cannot exceed total pages", Toast.LENGTH_SHORT).show()
+                                        } else if (currentPageInt < currentPagesRead) {
+                                            Toast.makeText(context, "Cannot go back to earlier pages", Toast.LENGTH_SHORT).show()
                                         } else {
                                             // Update the book in the database via BookViewModel
                                             bookViewModel.updateBookProgress(

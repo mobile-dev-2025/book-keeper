@@ -102,7 +102,12 @@ Auth, Login, logout - Auth0
 
 ## Login
 
+![Login Screen](/assets/screen/screen-login2.png)
+
+## Login 2
+
 ![Login Screen](/assets/screen/screen-login.png)
+
 
 ## Home - No Book Added
 
@@ -114,11 +119,15 @@ Auth, Login, logout - Auth0
 
 ## Home - Book Added
 
-![Home Screen (no book added)](/assets/screen/screen-home-populated.png)
+![Home Screen (book added)](/assets/screen/screen-home-populated.png)
 
 ## History
 
-![Home Screen (no book added)](/assets/screen/screen-history.png)
+![History Screen](/assets/screen/screen-history.png)
+
+## Statistics
+
+![Statistics Screen](/assets/screen/screen-statistics.png)
 
 
 # Diagrams
